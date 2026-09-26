@@ -229,20 +229,28 @@ const MirrorCellCore = (() => {
   const FASTENERS = {
     '#4-40':  { label: '#4-40',  major: 2.845, clear: 3.4, head: 4.7, insHole: 3.2, insOD: 3.8, insLen: 3.8 },
     '#6-32':  { label: '#6-32',  major: 3.505, clear: 4.0, head: 5.7, insHole: 4.0, insOD: 4.6, insLen: 4.8 },
-    '#8-32':  { label: '#8-32',  major: 4.166, clear: 4.7, head: 6.9, insHole: 4.7, insOD: 5.3, insLen: 5.6 },
+    '#8-32':  { label: '#8-32',  major: 4.166, clear: 4.7, head: 6.9, insHole: 4.7, insOD: 5.3, insLen: 5.6, drill: '3/16" (4.8 mm)' },
     '#10-24': { label: '#10-24', major: 4.826, clear: 5.4, head: 7.9, insHole: 5.6, insOD: 6.3, insLen: 6.4,
-                washerOD: 12.7, washerT: 1.2, jamT: 3.2, nutAF: 9.5, minor: 3.50 },
+                washerOD: 12.7, washerT: 1.2, jamT: 3.2, nutAF: 9.5, minor: 3.50, drill: '13/64" (5.2 mm)' },
     '1/4-20': { label: '1/4-20', major: 6.35,  clear: 7.0, head: 9.5, insHole: 7.6, insOD: 8.4, insLen: 8.0,
-                washerOD: 15.9, washerT: 1.7, jamT: 4.0, nutAF: 11.1, minor: 4.79 },
+                washerOD: 15.9, washerT: 1.7, jamT: 4.0, nutAF: 11.1, minor: 4.79, drill: '17/64" (6.7 mm)' },
   };
 
   // Standard fans: hole spacing, clear opening, frame thickness, screw size.
   const FANS = {
-    40:  { size: 40,  spacing: 32.0,  opening: 38,  thick: 10, screw: '#4-40', model: '4010' },
-    60:  { size: 60,  spacing: 50.0,  opening: 57,  thick: 15, screw: '#6-32', model: '6015' },
-    80:  { size: 80,  spacing: 71.5,  opening: 76,  thick: 25, screw: '#6-32', model: '8025' },
-    92:  { size: 92,  spacing: 82.5,  opening: 88,  thick: 25, screw: '#6-32', model: '9225' },
-    120: { size: 120, spacing: 105.0, opening: 115, thick: 25, screw: '#6-32', model: '12025' },
+    40:  { size: 40,  spacing: 32.0,  opening: 38,  thick: 10, screw: '#4', model: '4010' },
+    60:  { size: 60,  spacing: 50.0,  opening: 57,  thick: 15, screw: '#6', model: '6015' },
+    80:  { size: 80,  spacing: 71.5,  opening: 76,  thick: 25, screw: '#6', model: '8025' },
+    92:  { size: 92,  spacing: 82.5,  opening: 88,  thick: 25, screw: '#6', model: '9225' },
+    120: { size: 120, spacing: 105.0, opening: 115, thick: 25, screw: '#6', model: '12025' },
+  };
+
+  // Thread-forming screws for plastics (fan mount): pilot hole ≈ 0.8 × major
+  // diameter for printed PETG/ASA; pan head.  Walls are measured from the major
+  // diameter, since the screw forms its thread in the plastic around the pilot.
+  const FORMING = {
+    '#4': { label: '#4', major: 2.84, pilot: 2.3, head: 5.6, driver: 'Phillips #1' },
+    '#6': { label: '#6', major: 3.51, pilot: 2.8, head: 6.9, driver: 'Phillips #2' },
   };
 
   // Mirror presets with typical defaults for thickness, tube ID and fan.
@@ -456,9 +464,11 @@ const MirrorCellCore = (() => {
     const pbKey = D <= 6.5 * IN ? '#10-24' : '1/4-20';
     const pb = FASTENERS[pbKey];
     const clipF = FASTENERS['#6-32'];
-    const tubeF = FASTENERS['#8-32'];
+    // tube screws use the push-pull size, so one insert size serves both
+    const tubeKey = pbKey;
+    const tubeF = FASTENERS[tubeKey];
     const fan = p.fan ? FANS[p.fan] : null;
-    const fanF = fan ? FASTENERS[fan.screw] : null;
+    const fanF = fan ? FORMING[fan.screw] : null;
 
     if (!(tMir > 3 && tMir < 100)) errors.push('Mirror thickness must be between 3 and 100 mm.');
 
@@ -519,9 +529,9 @@ const MirrorCellCore = (() => {
       let best = -Infinity;
       for (let a = 0; a < 90; a += 0.5) { const c = clearAt(a); if (c > best + 1e-9) { best = c; fanRot = a; } }
       fanHoles = [[s, s], [-s, s], [-s, -s], [s, -s]].map(c => rotPt(c, fanRot));
-      r_open = Math.min(fan.opening / 2, Math.SQRT2 * s - fanF.insOD / 2 - RULES.wallDesign, openLimit);
+      r_open = Math.min(fan.opening / 2, Math.SQRT2 * s - fanF.major / 2 - RULES.wallDesign, openLimit);
       if (r_open < fan.opening / 2 - 0.05)
-        notes.push(`Fan opening reduced to Ø${round(2 * r_open, 1)} mm (fan blade Ø${fan.opening}) to keep walls around the fan inserts and bolts.`);
+        notes.push(`Fan opening reduced to Ø${round(2 * r_open, 1)} mm (fan blade Ø${fan.opening}) to keep walls around the fan screws and bolts.`);
       for (const f of rearFeatures) {
         const d = distToSquare(rotPt(f.c, -fanRot), fan.size / 2) - f.r;
         if (d < 1) errors.push(`${fan.size} mm fan body would overlap a ${f.what}. Choose a smaller fan.`);
@@ -537,7 +547,7 @@ const MirrorCellCore = (() => {
     const windows = [];
     if (!spokes) {
       let r_wi = r_open + RULES.web;
-      if (fan) r_wi = Math.max(r_wi, fan.size / 2 * Math.SQRT2 + 3, Math.SQRT2 * fan.spacing / 2 + fanF.insOD / 2 + RULES.web);
+      if (fan) r_wi = Math.max(r_wi, fan.size / 2 * Math.SQRT2 + 3, Math.SQRT2 * fan.spacing / 2 + fanF.major / 2 + RULES.web);
       const r_wo = Rri - RULES.web;
       const aPull = Math.asin(Math.min(1, (washerR + RULES.web) / Rpad)) * R2D;
       const aPush = Math.asin(Math.min(1, (rPB + RULES.filletBoss + RULES.web) / Rpad)) * R2D;
@@ -556,7 +566,7 @@ const MirrorCellCore = (() => {
     // pair, centred between its pull and push bolts, out to a pad at the tube wall
     const R_hub = spokes ? Math.ceil(Math.max(
       Rpad + Math.max(washerR, rPB + RULES.filletBoss) + RULES.web,
-      fan ? Math.SQRT2 * fan.spacing / 2 + fanF.insOD / 2 + RULES.wallDesign : 0,
+      fan ? Math.SQRT2 * fan.spacing / 2 + fanF.major / 2 + RULES.wallDesign : 0,
       r_open + RULES.web)) : null;
     const spokeW = RULES.spokeWidth;
     const spokeAngles = pairs.map(pr => pr.th + delta / 2);
@@ -669,10 +679,11 @@ const MirrorCellCore = (() => {
 
     // other hardware lengths
     const tubeLenIn = stdLen(p.tubeWall + tubeF.insLen);
-    const fanLenIn = fan ? stdLen(fan.thick + fanF.insLen) : null;
+    // fan screws: thread engagement in the plate of min(plate thickness, 2 × diameter)
+    const fanLenIn = fan ? stdLen(fan.thick + Math.min(t_r, 2 * fanF.major)) : null;
 
     const d = {
-      p, preset, D, Rm, tMir, Rt, adj, clips, pbKey, pb, clipF, tubeF, fan, fanF,
+      p, preset, D, Rm, tMir, Rt, adj, clips, pbKey, pb, clipF, tubeKey, tubeF, fan, fanF,
       t_r, Rro, Rri, skirtT, h_pb, h_so, H_s, z_rr, z_rf,
       Rpad, padR, rPB, washerR, nutCorner, contactR, sp, delta, pairs, poses, tiltMax, pullClear,
       r_open, fanHoles, fanRot, windows, nTube, tubeAngles, z_tube,
@@ -717,7 +728,7 @@ const MirrorCellCore = (() => {
       rpHoles.push({ name: `pull clearance hole P${i + 1}`, c: pr.pull, r: d.pullClear / 2 });
       rpHoles.push({ name: `push insert P${i + 1}`, c: pr.push, r: d.pb.insOD / 2, boss: d.rPB });
     });
-    d.fanHoles.forEach((c, i) => rpHoles.push({ name: `fan insert F${i + 1}`, c, r: d.fanF.insOD / 2 }));
+    d.fanHoles.forEach((c, i) => rpHoles.push({ name: `fan screw pilot F${i + 1}`, c, r: d.fanF.major / 2 }));
     const rpCuts = [{ type: 'circle', c: [0, 0], r: d.r_open }, ...(d.spokes ? [{ type: 'outside', r: d.R_hub }] : [])]
       .concat(d.windows.map(w => ({ type: 'poly', pts: sectorPolygon(w.r1, w.r2, w.a1, w.a2) })));
     for (const h of rpHoles) {
@@ -740,7 +751,6 @@ const MirrorCellCore = (() => {
     if (d.spokes) add('Rear plate', 'wall: tube-screw insert to sides of spoke tip pad', (d.spokeW - d.tubeF.insOD) / 2, W);
     add('Rear plate', 'skirt thickness ≥ tube insert length', d.skirtT - d.tubeF.insLen, 0);
     add('Rear plate', 'push insert fits boss height', d.h_pb - d.pb.insLen, 0);
-    if (d.fan) add('Rear plate', 'fan insert fits plate thickness', d.t_r - d.fanF.insLen, 0);
     // tube-screw spacing (tangential wall between neighbouring radial inserts)
     const tubeArc = 2 * d.Rro * Math.sin(Math.PI / d.nTube) - d.tubeF.insOD;
     add('Rear plate', 'wall between tube-screw inserts', tubeArc, W);
@@ -794,7 +804,7 @@ const MirrorCellCore = (() => {
     if (d.fan) {
       const prot = d.fanLenIn * IN - d.fan.thick - d.t_r;
       add('Fan', 'fan-screw tip protrusion past plate front (must clear mirror plate)', prot, d.g - d.adj - 1, '<=');
-      add('Fan', 'fan-screw thread engagement', d.fanLenIn * IN - d.fan.thick, d.fanF.insLen);
+      add('Fan', `fan-screw thread engagement in the plate (${d.fan.screw} thread-forming)`, Math.min(d.fanLenIn * IN - d.fan.thick, d.t_r), 1.5 * d.fanF.major);
     }
 
     // ----- clearances at every extreme collimation pose (8 poses: each pair ±adj)
@@ -834,7 +844,7 @@ const MirrorCellCore = (() => {
   // =========================================================================
   // Hex-key / wrench sizes for the hardware we specify (inch sizes).
   const SHCS_KEY = { '#4-40': '3/32"', '#6-32': '7/64"', '#8-32': '9/64"', '#10-24': '5/32"', '1/4-20': '3/16"' };
-  const BUTTON_KEY = { '#6-32': '5/64"', '#8-32': '3/32"', '#10-24': '1/8"' };
+  const BUTTON_KEY = { '#6-32': '5/64"', '#8-32': '3/32"', '#10-24': '1/8"', '1/4-20': '5/32"' };
   const NUT_WRENCH = { '#10-24': '3/8"', '1/4-20': '7/16"' };
   const BOM_CATEGORIES = ['Printed part', 'Screw', 'Nut / washer', 'Heat-set insert', 'Fan', 'Consumable', 'Tool'];
 
@@ -889,7 +899,7 @@ const MirrorCellCore = (() => {
     add(B, `rear plate local bending at each pair (t = ${d.t_r} mm)`, 3 * Fax / (S.eta * d.t_r ** 2), S.sigmaXY, 'MPa', 'σ = 3F / (η·t²)');
     add(B, d.spokes ? `rear plate spokes carrying the mirror side to the tube (3 × ${d.spokeW} mm wide)` : `rear plate spokes carrying the mirror side to the skirt (${round(d.spokeB, 0)} mm wide)`,
       6 * (n * Wside / 3 * (d.Rri - d.Rpad)) / (S.eta * d.spokeB * d.t_r ** 2), S.sigmaXY, 'MPa', 'σ = 6·F·L / (η·b·t²)');
-    add(B, `tube-screw bearing in the skirt (${d.nTube} × #8-32, cell ${round(m.mTotal, 2)} kg)`,
+    add(B, `tube-screw bearing in the skirt (${d.nTube} × ${d.tubeKey}, cell ${round(m.mTotal, 2)} kg)`,
       n * m.mTotal * 9.81 / d.nTube / (d.tubeF.major * d.skirtT), S.sigmaBear, 'MPa', 'σ = F / (d·L)');
     if (d.clips) {
       const Fc = n * d.W / 3, a = d.latGap + RULES.clipOverlap / 2, b = d.postD / 2;
@@ -931,10 +941,11 @@ const MirrorCellCore = (() => {
     add('Screw', 3, 'Socket head cap screw (pull / adjust)', pb, fmtIn(d.pullLenIn), 'rear plate → mirror plate pad inserts',
       `a thumbscrew or knob of the same length also works; lock at ≈ ${round(STRENGTH.torqueK * d.pb.major / 1000 * d.Fpre, 2)} N·m`);
     add('Screw', 3, 'Socket head cap screw (push / lock)', pb, fmtIn(d.pushLenIn), 'rear-plate push bosses', `fully threaded; lock at ≈ ${round(STRENGTH.torqueK * d.pb.major / 1000 * d.Fpre, 2)} N·m`);
-    add('Screw', d.nTube, 'Button head socket cap screw (tube attachment)', '#8-32', fmtIn(d.tubeLenIn), 'through tube wall into skirt',
+    add('Screw', d.nTube, 'Button head socket cap screw (tube attachment)', d.tubeKey, fmtIn(d.tubeLenIn), 'through tube wall into skirt',
       `sized for a ${round(d.p.tubeWall, 2)} mm tube wall`);
     if (d.clips) add('Screw', 3, 'Socket head cap screw (clips)', '#6-32', fmtIn(d.clipLenIn), 'clips → clip posts');
-    if (d.fan) add('Screw', 4, 'Socket head cap screw (fan mount)', d.fan.screw, fmtIn(d.fanLenIn), 'fan → rear plate');
+    if (d.fan) add('Screw', 4, 'Thread-forming screw for plastics, pan head (fan mount)', d.fan.screw, fmtIn(d.fanLenIn), 'fan → rear plate pilot holes',
+      `e.g. Hi-Lo or 48° plastic-forming thread; Ø${d.fanF.pilot} mm pilot holes; don't overtighten`);
 
     // ----- nuts and washers
     add('Nut / washer', 3, 'Hex jam nut', pb, '', 'push bolts', `${NUT_WRENCH[pb]} across flats`);
@@ -944,9 +955,8 @@ const MirrorCellCore = (() => {
     const ins = (f, key) => `${key}, ${f.insLen} mm long, for Ø${f.insHole} mm hole`;
     add('Heat-set insert', 3, 'Brass heat-set insert (tapered, for plastics)', ins(d.pb, pb), '', 'rear plate, push bosses', 'install from rear face');
     add('Heat-set insert', 3, 'Brass heat-set insert (tapered, for plastics)', ins(d.pb, pb), '', 'mirror plate, pad columns', 'install from rear face');
-    add('Heat-set insert', d.nTube, 'Brass heat-set insert (tapered, for plastics)', ins(d.tubeF, '#8-32'), '', 'rear-plate skirt (radial)', 'install from outside of skirt');
+    add('Heat-set insert', d.nTube, 'Brass heat-set insert (tapered, for plastics)', ins(d.tubeF, d.tubeKey), '', d.spokes ? 'rear-plate spoke tips (radial)' : 'rear-plate skirt (radial)', 'install from outside');
     if (d.clips) add('Heat-set insert', 3, 'Brass heat-set insert (tapered, for plastics)', ins(d.clipF, '#6-32'), '', 'clip posts', 'install from top of post');
-    if (d.fan) add('Heat-set insert', 4, 'Brass heat-set insert (tapered, for plastics)', ins(d.fanF, d.fan.screw), '', 'rear plate, fan mount', 'install from rear face');
 
     // ----- fan
     if (d.fan) add('Fan', 1, `${d.fan.size} mm 12 V DC fan`, `${d.fan.model} (${d.fan.size} × ${d.fan.size} × ${d.fan.thick} mm), ${d.fan.spacing} mm hole spacing`, '',
@@ -961,13 +971,14 @@ const MirrorCellCore = (() => {
     const keys = new Map();
     const needKey = (size, why) => { if (size) keys.set(size, [...(keys.get(size) || []), why]); };
     needKey(SHCS_KEY[pb], `${pb} socket heads`);
-    needKey(BUTTON_KEY['#8-32'], '#8-32 button heads');
+    needKey(BUTTON_KEY[d.tubeKey], `${d.tubeKey} button heads`);
     if (d.clips) needKey(SHCS_KEY['#6-32'], '#6-32 clip screws');
-    if (d.fan) needKey(SHCS_KEY[d.fan.screw], `${d.fan.screw} fan screws`);
+
     for (const [size, why] of keys) add('Tool', 1, 'Hex key', size, '', why.join(', '));
     add('Tool', 1, 'Wrench', NUT_WRENCH[pb], '', 'push-bolt jam nuts');
-    add('Tool', 1, 'Drill bit', '3/16" (4.8 mm)', '', `${d.nTube} tube-wall holes for #8-32`, 'positions are in the hole schedule (C)');
-    const insSizes = [pb, '#8-32', d.clips ? '#6-32' : null, d.fan ? d.fan.screw : null].filter(Boolean);
+    if (d.fan) add('Tool', 1, 'Screwdriver', d.fanF.driver, '', `${d.fan.screw} fan screws`);
+    add('Tool', 1, 'Drill bit', d.tubeF.drill, '', `${d.nTube} tube-wall holes for ${d.tubeKey}`, 'positions are in the hole schedule (C)');
+    const insSizes = [pb, d.tubeKey, d.clips ? '#6-32' : null].filter(Boolean);
     add('Tool', 1, 'Soldering iron with heat-set insert tips', [...new Set(insSizes)].join(', '), '', 'installing inserts', 'or a dedicated insert press');
 
     // merge identical rows
@@ -1006,10 +1017,10 @@ const MirrorCellCore = (() => {
       loc: `R${round(d.Rpad, 2)} @ ${d.pairs.map(p => ang(p.pushAng)).join(', ')}`, install: 'from rear face' });
     h.push({ part: 'Rear plate', label: 'B', qty: 3, desc: `${d.pbKey} clearance (pull bolt)${d.pullClear > pb.clear ? ', enlarged so the bolt can tilt' : ''}`, size: `Ø${d.pullClear} thru`,
       loc: `R${round(d.Rpad, 2)} @ ${d.pairs.map(p => ang(p.th)).join(', ')}`, install: '' });
-    h.push({ part: 'Rear plate', label: 'C', qty: d.nTube, desc: '#8-32 heat-set insert (tube screw), radial teardrop', size: `Ø${d.tubeF.insHole} thru skirt (${d.skirtT})`,
+    h.push({ part: 'Rear plate', label: 'C', qty: d.nTube, desc: `${d.tubeKey} heat-set insert (tube screw), radial teardrop`, size: `Ø${d.tubeF.insHole} thru ${d.spokes ? 'tip pad' : 'skirt'} (${d.skirtT})`,
       loc: `${d.tubeAngles.map(ang).join(', ')}; ${round(d.z_tube, 2)} from tube end`, install: 'from outside of skirt' });
-    if (d.fan) h.push({ part: 'Rear plate', label: 'D', qty: 4, desc: `${d.fan.screw} heat-set insert (fan)`, size: `Ø${d.fanF.insHole} thru`,
-      loc: `${d.fan.spacing} × ${d.fan.spacing} square, rotated ${round(d.fanRot, 1)}°`, install: 'from rear face' });
+    if (d.fan) h.push({ part: 'Rear plate', label: 'D', qty: 4, desc: `${d.fan.screw} thread-forming screw pilot (fan)`, size: `Ø${d.fanF.pilot} thru`,
+      loc: `${d.fan.spacing} × ${d.fan.spacing} square, rotated ${round(d.fanRot, 1)}°`, install: 'screw in from rear face' });
     h.push({ part: 'Rear plate', label: 'E', qty: 1, desc: d.fan ? 'Fan opening' : 'Central vent', size: `Ø${round(2 * d.r_open, 1)} thru`, loc: 'centre', install: '' });
     if (d.windows.length) h.push({ part: 'Rear plate', label: 'F', qty: d.windows.length, desc: 'Vent window (annular sector)', size: `R${d.windows[0].r1}–R${d.windows[0].r2}, ${round(d.windows[0].a2 - d.windows[0].a1, 1)}° wide`,
       loc: d.windows.map(w => `${ang(w.a1)}–${ang(w.a2)}`).join(', '), install: '' });
@@ -1125,7 +1136,7 @@ const MirrorCellCore = (() => {
       rp = rp.cut(cyl(d.pullClear / 2, Hc, pr.pull, -1));
       rp = rp.cut(cyl(d.pb.insHole / 2, Hc, pr.push, -1));
     }
-    for (const c of d.fanHoles) rp = rp.cut(cyl(d.fanF.insHole / 2, Hc, c, -1));
+    for (const c of d.fanHoles) rp = rp.cut(cyl(d.fanF.pilot / 2, Hc, c, -1));
     rp = rp.cut(cyl(d.r_open, Hc, [0, 0], -1));
     for (const w of d.windows) {
       const n = 3;
@@ -1258,9 +1269,13 @@ const MirrorCellCore = (() => {
     if (d.fan) {
       const f = d.fan, F = d.fanF, z0 = d.z_rr - f.thick, L = d.fanLenIn * IN;
       for (const c of d.fanHoles) {
-        add('bolt', 'fan screw', cyl(F.major / 2, L, c, z0), steel, 'fanScrews');
+        // thread-forming screw: full diameter through the fan frame and beyond the
+        // plate, pilot diameter where it forms its own thread inside the plate
+        const tip = z0 + L;
+        add('bolt', 'fan screw', cyl(F.major / 2, d.z_rr - z0, c, z0), steel, 'fanScrews');
+        add('bolt', 'fan screw (formed thread)', cyl(F.pilot / 2, Math.min(tip, d.z_rf) - d.z_rr, c, d.z_rr), steel, 'fanScrews');
+        if (tip > d.z_rf) add('bolt', 'fan screw tip', cyl(F.major / 2, tip - d.z_rf, c, d.z_rf), steel, 'fanScrews');
         add('bolt', 'fan screw head', cyl(F.head / 2, F.major, c, z0 - F.major), steel, 'fanScrews');
-        add('insert', 'fan insert', cyl(F.insOD / 2, F.insLen, c, d.z_rr), brass);
       }
     }
     return hw;
@@ -1522,7 +1537,7 @@ const MirrorCellCore = (() => {
       v1 += circle(T1(pr.push), d.rPB, { w: 0.45 }) + circle(T1(pr.push), d.pb.insHole / 2) + circle(T1(pr.pull), d.pullClear / 2);
       v1 += circle(T1(pr.pull), d.washerR, { dash: '1 1', color: S.hid });
     }
-    for (const c of d.fanHoles) v1 += circle(T1(c), d.fanF.insHole / 2);
+    for (const c of d.fanHoles) v1 += circle(T1(c), d.fanF.pilot / 2);
     if (d.fan) { const h = d.fan.size / 2, F = (x, y) => T1(rotPt([x, y], d.fanRot)); v1 += path(`M${P(...F(h, h))}L${P(...F(-h, h))}L${P(...F(-h, -h))}L${P(...F(h, -h))}Z`, { dash: '3 1.5', color: S.hid }); }
     for (const a of d.tubeAngles) { const p0 = T1(pol(d.Rri, a)), p1 = T1(pol(d.Rro, a)); v1 += line(p0, p1, { w: 0.9, color: S.line }); }
     v1 += circle(T1([0, 0]), d.Rpad, { dash: '6 1.5 1 1.5', color: S.hid });
@@ -1547,7 +1562,7 @@ const MirrorCellCore = (() => {
     v1 += arcDim(c1, d.Rpad + 8, ang(d.pairs[1].pull), ang(d.pairs[2].pull) + (ang(d.pairs[2].pull) < ang(d.pairs[1].pull) ? 360 : 0), '120°');
     if (d.fan) {
       const h = d.fan.spacing / 2;
-      v1 += dimLin(T1(rotPt([h, -h], d.fanRot)), T1(rotPt([-h, -h], d.fanRot)), -(d.fan.size / 2 - h) - 6, `D ${d.fan.spacing} sq @ ${round(d.fanRot, 1)}°, Ø${d.fanF.insHole} insert (×4)`);
+      v1 += dimLin(T1(rotPt([h, -h], d.fanRot)), T1(rotPt([-h, -h], d.fanRot)), -(d.fan.size / 2 - h) - 6, `D ${d.fan.spacing} sq @ ${round(d.fanRot, 1)}°, Ø${d.fanF.pilot} pilot (×4)`);
     }
     if (d.windows.length) {
       const w = d.windows[1] || d.windows[0], am = (w.a1 + w.a2) / 2;
@@ -2003,15 +2018,15 @@ function renderDecisions() {
     <li><b>CAD kernel: replicad</b> (OpenCascade compiled to WebAssembly), loaded from jsDelivr. It is a real B-rep kernel, so it can write true <b>STEP</b>. JSCAD is mesh-only CSG and cannot export STEP. 3MF files are written from the kernel's triangulation, with a small built-in 3MF writer and <code>fflate</code> for the zip.</li>
     <li><b>3MF print defaults:</b> ${P.walls} walls (perimeters), ${P.infill}% ${P.pattern} infill, ${P.top} top and ${P.bottom} bottom layers, ${P.layer} mm layers, supports off. Five walls at 0.4 mm make the ≥ 2 mm material around every heat-set insert solid perimeter, not infill. These are written as per-object settings that PrusaSlicer reads (<code>Metadata/Slic3r_PE_model.config</code>). Equivalent OrcaSlicer/Bambu keys are included on a best-effort basis (<code>Metadata/model_settings.config</code>). The same values appear in the file description, so you can enter them by hand in any slicer.</li>
     <li><b>Oversize parts:</b> any part whose footprint, at its best rotation, exceeds the bed (default 235 × 235 mm, e.g. a Kobra S1; set 220 for the brief's standard bed) is flagged in a warning that gives the bed size needed. The part is <b>exported whole and full size, never split or scaled</b>. To shrink it, choose the 3-spoke rear plate (below), print on a larger bed, or cut it in your slicer.</li>
-    <li><b>Rear plate style (option):</b> <i>Ring</i> (default) is a full plate with a skirt around the tube wall, 3 or 6 tube screws and vent windows. <i>3 spokes</i> is a hub carrying the push-pull pairs and fan, with one ${RU.spokeWidth} mm spoke per pair, centred between its pull and push bolts. Each spoke ends in a pad against the tube wall with one radial #8-32 screw (3 in total). Its footprint is about 13% smaller (an 8" mirror in a 10" tube goes from 253 to about 223 mm) and it uses roughly 40% less plastic. The three pads centre the plate in the tube and tolerate an out-of-round tube better than a ring. The spokes are sized by the strength checks.</li>
+    <li><b>Rear plate style (option):</b> <i>Ring</i> (default) is a full plate with a skirt around the tube wall, 3 or 6 tube screws and vent windows. <i>3 spokes</i> is a hub carrying the push-pull pairs and fan, with one ${RU.spokeWidth} mm spoke per pair, centred between its pull and push bolts. Each spoke ends in a pad against the tube wall with one radial tube screw (3 in total). Its footprint is about 13% smaller (an 8" mirror in a 10" tube goes from 253 to about 223 mm) and it uses roughly 40% less plastic. The three pads centre the plate in the tube and tolerate an out-of-round tube better than a ring. The spokes are sized by the strength checks.</li>
     <li><b>Print orientation, no supports:</b> the rear plate prints front-face-down, so the skirt and push bosses grow upward. The radial tube-screw holes are teardrops pointing up. The mirror plate prints rear-face-down, with pads and posts growing upward. The blind insert holes open onto the bed, and their small (&lt; 8 mm) roofs bridge. Clips print flat.</li>
     <li><b>Push-pull:</b> 3 pairs at 120°, on a circle of 0.65 × mirror diameter (close to the optimum for 3-point support). Each pull bolt passes through a clearance hole in the rear plate and threads into a heat-set insert inside the pad column that the mirror rests on. The push bolt threads through a heat-set insert in a boss on the rear plate, bears on the mirror plate's back, and is locked with a jam nut. Bolts are #10-24 for 4.25" and 6" mirrors and 1/4-20 for 8" and 10" mirrors. Default travel at each pair is sized so the worst case (one pair fully out, two fully in) tilts the mirror about 2.5°: ±1 mm for 4.25", ±1.5 mm for 6", ±2 mm for 8" and ±2.5 mm for 10". That is several times what collimation needs, and it is adjustable under Advanced. The plate gap is set so a standard-length pull bolt fully engages its insert at maximum gap and never bottoms at minimum gap. All 8 extreme poses (each pair at +travel or −travel) are checked for clearance to the tube wall and the rear plate, both analytically and with a CAD intersection. The pull-bolt clearance holes are enlarged automatically if the travel you choose would make the bolts bind as they tilt.</li>
     <li><b>Strength:</b> plate thicknesses, lateral-post depth, arm ribs and (RTV) pad size are sized by hand calculations for three load cases: tube horizontal, tube vertical with the locked push-pull preload, and tube pointing down. They are checked against sustained allowables for printed PETG/ASA. The results are in the Strength table on the Checks tab. Lock the pairs finger-snug (Advanced › push-pull lock preload, default 100 N per bolt); the BOM gives the torque.</li>
     <li><b>Walls:</b> the generator aims for ${RU.wallDesign} mm around inserts, measured from the insert's outside diameter. Every insert and through-hole is checked for ≥ ${RU.wallMin} mm to the nearest hole, cut-out or edge. Blind holes keep ≥ ${RU.capMin} mm of cap.</li>
     <li><b>Retention:</b> <i>RTV</i> — each pad has a ${RU.rtvCupDepth} mm-deep cup that sets the silicone thickness, and 3 lateral stops sit at the mirror edge. <i>Clips</i> — the mirror rests on flat pads, and 3 posts carry ${RU.clipThick} mm clips that overlap the face by ${RU.clipOverlap} mm, with a small gap so they never pinch the glass.</li>
     <li><b>Fillets:</b> rear plate — ${RU.filletSkirt} mm where the plate meets the skirt, ${RU.filletBoss} mm at the root of each push boss, and ${RU.filletWindow} mm vent-window corners. Mirror plate — ${RU.filletPad} mm around each pad column, up to ${RU.filletPost} mm along the inner face of each lateral post (kept ≥ 2 mm below the mirror), and ${RU.filletRib} mm along the arm ribs. All are inside corners that face up when printed, so they need no supports. The fan is automatically rotated to the angle that best clears the bolts.</li>
-    <li><b>Tube attachment:</b> the rear plate is a slip fit in the tube, and its skirt is flush with the tube end. #8-32 screws go through the tube wall into radial heat-set inserts in the skirt: 3 for tubes under 200 mm ID, 6 above.</li>
-    <li><b>Fan:</b> optional, mounted on the back of the rear plate and blowing into the tube, through the plate's central opening and a matching hole in the mirror plate. Uses heat-set inserts and ${'#4-40 (40 mm fans) or #6-32 screws'}.</li>
+    <li><b>Tube attachment:</b> the rear plate is a slip fit in the tube, and its skirt (or spoke tips) sits flush with the tube end. Screws go through the tube wall into radial heat-set inserts: 3 for the 3-spoke plate or for tubes under 200 mm ID, 6 otherwise. The tube screws are the same size as the push-pull bolts (#10-24 for 4.25"/6" mirrors, 1/4-20 for 8"/10"), so one insert size serves both.</li>
+    <li><b>Fan:</b> optional, mounted on the back of the rear plate and blowing into the tube, through the plate's central opening and a matching hole in the mirror plate. It is held by thread-forming screws for plastics (#4 for 40 mm fans, #6 for larger) driven from the back into printed pilot holes (about 0.8 × screw diameter), so it needs no inserts or nuts. The screws are sized for at least 1.5 diameters of thread in the plate.</li>
     <li><b>Material:</b> ${esc(P.material)}.</li>
   </ul>`;
 }
