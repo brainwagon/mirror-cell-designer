@@ -1,0 +1,2156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mirror Cell Designer</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14.5' fill='%234f7cac'/%3E%3Ccircle cx='16' cy='16' r='9.5' fill='%23cfe4f7' stroke='%23c9803a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='7' r='2.2' fill='%23fff'/%3E%3Ccircle cx='8.2' cy='20.5' r='2.2' fill='%23fff'/%3E%3Ccircle cx='23.8' cy='20.5' r='2.2' fill='%23fff'/%3E%3C/svg%3E">
+<meta name="description" content="Design 3D-printable push-pull mirror cells for Newtonian telescopes; export STEP and 3MF.">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1d2430; --muted: #5b6574; --line: #d9dee5;
+    --accent: #2f6fb3; --accent-ink: #ffffff; --ok: #1d7a46; --ok-bg: #e5f4ea; --warn: #8a5a00; --warn-bg: #fff4d6;
+    --err: #b3261e; --err-bg: #fde7e5; --dim: #1f6fd1; --hid: #8a94a3;
+    --part: rgba(79,124,172,0.14); --part2: rgba(201,128,58,0.16); --ghost: rgba(120,170,220,0.18);
+    --scene: #eef1f5; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161c; --panel: #1a2029; --ink: #e6eaf0; --muted: #9aa5b4; --line: #2c3542;
+      --accent: #5b9be0; --accent-ink: #0b1220; --ok: #6fd39a; --ok-bg: #16301f; --warn: #f0c060; --warn-bg: #33290f;
+      --err: #ff8a80; --err-bg: #3a1714; --dim: #74b0ff; --hid: #7d8898;
+      --part: rgba(110,160,215,0.18); --part2: rgba(230,160,90,0.18); --ghost: rgba(120,170,220,0.14);
+      --scene: #171c24; --shadow: none; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12161c; --panel: #1a2029; --ink: #e6eaf0; --muted: #9aa5b4; --line: #2c3542;
+    --accent: #5b9be0; --accent-ink: #0b1220; --ok: #6fd39a; --ok-bg: #16301f; --warn: #f0c060; --warn-bg: #33290f;
+    --err: #ff8a80; --err-bg: #3a1714; --dim: #74b0ff; --hid: #7d8898;
+    --part: rgba(110,160,215,0.18); --part2: rgba(230,160,90,0.18); --ghost: rgba(120,170,220,0.14);
+    --scene: #171c24; --shadow: none; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+  header .status { color: var(--muted); font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header .status.busy::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; border: 2px solid var(--accent); border-right-color: transparent; animation: spin .8s linear infinite; vertical-align: -1px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .layout { display: grid; grid-template-columns: 330px minmax(0, 1fr); min-height: calc(100vh - 49px); }
+  aside { border-right: 1px solid var(--line); background: var(--panel); padding: 14px 16px 24px; overflow-y: auto; max-height: calc(100vh - 49px); position: sticky; top: 49px; }
+  main { padding: 14px 16px 24px; min-width: 0; }
+  fieldset { border: 0; padding: 0; margin: 0 0 16px; }
+  legend { font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 6px; padding: 0; }
+  label.row { display: grid; grid-template-columns: 1fr 132px; align-items: center; gap: 8px; margin: 6px 0; }
+  label.row span small { color: var(--muted); display: block; font-size: 11.5px; }
+  input[type=number], select { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit; }
+  input[type=number]:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: var(--bg); color: var(--ink); padding: 7px 4px; font: inherit; cursor: pointer; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  details { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; }
+  summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+  .summary-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .pill { display: block; padding: 7px 9px; border-radius: 8px; font-size: 13px; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .pill.err { background: var(--err-bg); color: var(--err); }
+  .pill.info { background: var(--bg); color: var(--muted); }
+  .pill b { font-weight: 650; }
+  .banner { margin-bottom: 12px; display: grid; gap: 8px; }
+  .banner:empty { display: none; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; overflow-x: auto; }
+  .tabs button { border: 0; background: none; color: var(--muted); padding: 8px 12px; font: inherit; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tabs button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .viewer { position: relative; height: min(72vh, 760px); min-height: 380px; border-radius: 10px; overflow: hidden; background: var(--scene); border: 1px solid var(--line); }
+  .viewer canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+  .viewer .overlay { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; text-align: center; padding: 20px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 10px 0 0; font-size: 13px; }
+  .toolbar label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .toolbar input[type=range] { width: 130px; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 6px 10px; border-radius: 7px; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .exports { display: grid; gap: 8px; }
+  .exports .grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .exports .grp span { color: var(--muted); font-size: 12.5px; flex-basis: 100%; }
+  .sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; overflow-x: auto; }
+  .sheet svg { width: 100%; height: auto; max-width: 1100px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pass { color: var(--ok); font-weight: 650; }
+  .fail { color: var(--err); font-weight: 650; }
+  .tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 18px 0 8px; }
+  h2:first-child { margin-top: 4px; }
+  .prose { max-width: 820px; }
+  .prose li { margin: 4px 0; }
+  .muted { color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+    .viewer { height: 60vh; }
+    header .status { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mirror Cell Designer</h1>
+  <div class="status" id="status" role="status" aria-live="polite">Starting…</div>
+  <button class="btn" id="themeBtn" title="Toggle light/dark">◐</button>
+</header>
+<div class="layout">
+  <aside>
+    <fieldset>
+      <legend>Mirror</legend>
+      <div class="seg" id="presetSeg" role="group" aria-label="Mirror diameter">
+        <button data-preset="4.25">4.25″</button><button data-preset="6">6″</button><button data-preset="8">8″</button><button data-preset="10">10″</button>
+      </div>
+      <label class="row"><span>Mirror thickness <small id="thickHint"></small></span><input type="number" id="mirrorThick" step="any" min="0"></label>
+    </fieldset>
+    <fieldset>
+      <legend>Tube</legend>
+      <label class="row"><span>Tube inside diameter</span><input type="number" id="tubeID" step="any" min="0"></label>
+      <label class="row"><span>Tube wall thickness <small>sets tube-screw length only</small></span><input type="number" id="tubeWall" step="any" min="0"></label>
+      <label class="row"><span>Units for these inputs</span>
+        <div class="seg" id="unitSeg"><button data-unit="in">in</button><button data-unit="mm">mm</button></div></label>
+    </fieldset>
+    <fieldset>
+      <legend>Mirror retention</legend>
+      <div class="seg" id="retSeg"><button data-ret="rtv">RTV glue</button><button data-ret="clips">Clips</button></div>
+    </fieldset>
+    <fieldset>
+      <legend>Cooling fan</legend>
+      <label class="row"><span>Fan on rear plate</span><select id="fan"></select></label>
+    </fieldset>
+    <fieldset>
+      <legend>Printer</legend>
+      <label class="row"><span>Bed size (mm, square)</span><input type="number" id="bed" step="1" min="50"></label>
+    </fieldset>
+    <details>
+      <summary>Advanced</summary>
+      <label class="row"><span>Tube fit clearance <small>diametral, mm</small></span><input type="number" id="fitClear" step="0.1" min="0"></label>
+      <label class="row"><span>Min. plate gap <small>mm (rounded up to suit a standard bolt)</small></span><input type="number" id="gapNominal" step="0.5" min="5"></label>
+      <label class="row"><span>Collimation travel <small>± mm at each pair</small></span><input type="number" id="adj" step="0.5" min="1"></label>
+      <label class="row"><span>Mirror edge gap <small>radial, mm</small></span><input type="number" id="lateralGap" step="0.05" min="0.25"></label>
+      <label class="row"><span>Clip gap above mirror <small>mm</small></span><input type="number" id="clipGap" step="0.1" min="0.5"></label>
+      <label class="row"><span>Push-pull lock preload <small>N per bolt; sizes the plates</small></span><input type="number" id="preload" step="10" min="20"></label>
+      <p><button class="btn" id="resetBtn">Reset to preset defaults</button></p>
+    </details>
+    <fieldset style="margin-top:16px">
+      <legend>Status</legend>
+      <ul class="summary-list" id="summary"></ul>
+    </fieldset>
+    <fieldset>
+      <legend>Export</legend>
+      <div class="exports" id="exports">
+        <div class="grp"><span>All parts</span><button class="btn primary" data-exp="3mf-all" disabled>3MF (print)</button><button class="btn primary" data-exp="step-asm" disabled>STEP (assembly)</button></div>
+        <div id="partExports" class="exports"></div>
+        <div class="grp"><span>Docs</span><button class="btn" data-exp="csv">BOM .csv</button><button class="btn" data-exp="svg">Drawing SVG</button><button class="btn" data-exp="md">Report .md</button></div>
+      </div>
+    </fieldset>
+  </aside>
+  <main>
+    <div class="banner" id="banner"></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="t3d" aria-selected="true">3D preview</button>
+      <button role="tab" data-tab="t2d" aria-selected="false">2D layout</button>
+      <button role="tab" data-tab="tchk" aria-selected="false">Checks</button>
+      <button role="tab" data-tab="tbom" aria-selected="false">Dimensions &amp; BOM</button>
+      <button role="tab" data-tab="tdec" aria-selected="false">Design decisions</button>
+    </div>
+    <section class="tab active" id="t3d">
+      <div class="viewer"><canvas id="canvas"></canvas><div class="overlay" id="overlay">Loading the CAD kernel from the CDN…<br>(about 23 MB the first time; cached afterwards)</div></div>
+      <div class="toolbar">
+        <div class="seg" id="viewSeg" style="width:220px"><button data-view="asm">Assembly</button><button data-view="print">Print layout</button></div>
+        <label><input type="checkbox" id="optHw" checked> Hardware</label>
+        <label><input type="checkbox" id="optTube"> Tube</label>
+        <label><input type="checkbox" id="optSection"> Section</label>
+        <label>Explode <input type="range" id="optExplode" min="0" max="1" step="0.01" value="0"></label>
+        <button class="btn" id="fitBtn">Fit view</button>
+      </div>
+      <div class="toolbar legend" id="legend"></div>
+    </section>
+    <section class="tab" id="t2d">
+      <p class="muted">Dimensioned layout generated from the same numbers as the solids. All dimensions in mm. Hole letters refer to the hole schedule on the <em>Dimensions &amp; BOM</em> tab.</p>
+      <div class="sheet" id="sheet"></div>
+    </section>
+    <section class="tab" id="tchk"><div id="checks"></div></section>
+    <section class="tab" id="tbom"><div id="bom"></div></section>
+    <section class="tab" id="tdec"><div class="prose" id="decisions"></div></section>
+  </main>
+</div>
+<script>
+// CORE-BEGIN
+// Everything between CORE-BEGIN and CORE-END is plain JavaScript with no
+// imports.  The page runs it directly; tools/build-examples.mjs extracts it
+// from the HTML so the example files come from exactly the same code.
+const MirrorCellCore = (() => {
+  'use strict';
+
+  const IN = 25.4;
+  const D2R = Math.PI / 180;
+  const R2D = 180 / Math.PI;
+
+  // ---------------------------------------------------------------------
+  // Hardware tables (imperial).  All dimensions in mm.
+  //   clear  : printed clearance-hole diameter (normal fit + ~0.2 mm for printing)
+  //   head   : socket-head cap-screw head diameter (head height = major dia)
+  //   insHole: hole diameter for a tapered heat-set insert for plastics
+  //   insOD  : insert outside diameter (wall checks are measured from this)
+  //   insLen : insert length
+  // Insert sizes vary by brand; these match common tapered brass inserts
+  // (McMaster 94180A-series class).  Edit here if yours differ.
+  // ---------------------------------------------------------------------
+  const FASTENERS = {
+    '#4-40':  { label: '#4-40',  major: 2.845, clear: 3.4, head: 4.7, insHole: 3.2, insOD: 3.8, insLen: 3.8 },
+    '#6-32':  { label: '#6-32',  major: 3.505, clear: 4.0, head: 5.7, insHole: 4.0, insOD: 4.6, insLen: 4.8 },
+    '#8-32':  { label: '#8-32',  major: 4.166, clear: 4.7, head: 6.9, insHole: 4.7, insOD: 5.3, insLen: 5.6 },
+    '#10-24': { label: '#10-24', major: 4.826, clear: 5.4, head: 7.9, insHole: 5.6, insOD: 6.3, insLen: 6.4,
+                washerOD: 12.7, washerT: 1.2, jamT: 3.2, nutAF: 9.5, minor: 3.50 },
+    '1/4-20': { label: '1/4-20', major: 6.35,  clear: 7.0, head: 9.5, insHole: 7.6, insOD: 8.4, insLen: 8.0,
+                washerOD: 15.9, washerT: 1.7, jamT: 4.0, nutAF: 11.1, minor: 4.79 },
+  };
+
+  // Standard fans: hole spacing, clear opening, frame thickness, screw size.
+  const FANS = {
+    40:  { size: 40,  spacing: 32.0,  opening: 38,  thick: 10, screw: '#4-40', model: '4010' },
+    60:  { size: 60,  spacing: 50.0,  opening: 57,  thick: 15, screw: '#6-32', model: '6015' },
+    80:  { size: 80,  spacing: 71.5,  opening: 76,  thick: 25, screw: '#6-32', model: '8025' },
+    92:  { size: 92,  spacing: 82.5,  opening: 88,  thick: 25, screw: '#6-32', model: '9225' },
+    120: { size: 120, spacing: 105.0, opening: 115, thick: 25, screw: '#6-32', model: '12025' },
+  };
+
+  // Mirror presets with typical defaults for thickness, tube ID and fan.
+  const MIRRORS = {
+    '4.25': { label: '4.25"', D: 4.25 * IN, thick: 16,   tubeID: 5.5 * IN, fan: 40 },
+    '6':    { label: '6"',    D: 6 * IN,    thick: 25.4, tubeID: 8 * IN,   fan: 60 },
+    '8':    { label: '8"',    D: 8 * IN,    thick: 32,   tubeID: 10 * IN,  fan: 80 },
+    '10':   { label: '10"',   D: 10 * IN,   thick: 38,   tubeID: 12 * IN,  fan: 92 },
+  };
+
+  const STD_LEN_IN = [0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.5, 4];
+
+  // Design rules (all stated in the README and the app).
+  const RULES = {
+    wallMin: 2.0,      // required minimum wall around any insert / through hole
+    wallDesign: 3.0,   // wall the generator aims for around inserts
+    web: 4.0,          // minimum web between cut-outs and bolt features
+    capMin: 2.0,       // minimum material beyond a blind insert hole
+    rtvCupDepth: 2.0,  // RTV layer thickness set by the pad cup depth
+    clipThick: 3.0,    // clip thickness
+    clipOverlap: 3.0,  // how far a clip reaches over the mirror face
+    tiltMargin: 1.0,   // min radial clearance to the tube wall at full tilt
+    axialMargin: 1.0,  // min gap between mirror plate and rear plate at full tilt
+    filletSkirt: 3.0,  // rear plate: fillet where the plate web meets the skirt
+    filletBoss: 1.5,   // rear plate: fillet at the root of each push boss
+    filletWindow: 4.0, // rear plate: corner radius of the vent windows
+    filletPad: 2.0,    // mirror plate: fillet where each pad column meets the plate
+    filletPost: 3.0,   // mirror plate: fillet at the inner (tension) face of each lateral post
+    filletRib: 2.0,    // mirror plate: fillet along both sides of each arm rib
+  };
+
+  // Strength model: hand calculations (beam/plate formulas, not FEA).
+  // Allowables are for SUSTAINED load on FDM-printed PETG/ASA and are set at
+  // roughly 1/4–1/5 of typical short-term strengths to cover creep, weak layer
+  // adhesion and print variability.  Edit these if you have better data.
+  const STRENGTH = {
+    glassDensity: 2.5,     // g/cm³ (plate glass; borosilicate is lighter at 2.23)
+    plasticDensity: 1.27,  // g/cm³ solid PETG (infill ignored: conservative for weight)
+    handling: 2.0,         // dynamic factor on gravity loads (bumps, transport, slewing)
+    sigmaXY: 10,           // MPa sustained bending/tension along the layers
+    sigmaZ: 5,             // MPa sustained tension across the layers (interlayer)
+    sigmaBear: 15,         // MPa sustained compressive bearing
+    eta: 0.8,              // section efficiency of a printed section (walls + skins + 40% infill)
+    tauRTV: 0.2,           // MPa sustained shear/tension in the RTV silicone
+    steelBend: 250,        // MPa bending allowable for an alloy-steel socket screw
+    torqueK: 0.2,          // nut factor (dry steel threads) for torque ↔ preload
+    tipArea: 0.6,          // fraction of a bolt's end face that bears (chamfered point)
+    // sustained pull-out allowable per brass heat-set insert (N); short-term test
+    // values for inserts this size in PETG are typically several times higher
+    insertPullout: { '#4-40': 150, '#6-32': 250, '#8-32': 300, '#10-24': 400, '1/4-20': 500 },
+  };
+
+  // T-section (flange wf × tf, centred rib wr × hr on top): section modulus and neutral axis
+  function tSection(wf, tf, wr, hr) {
+    const A1 = wf * tf, y1 = tf / 2, A2 = wr * hr, y2 = tf + hr / 2, A = A1 + A2;
+    const yc = (A1 * y1 + A2 * y2) / A;
+    const I = wf * tf ** 3 / 12 + A1 * (y1 - yc) ** 2 + wr * hr ** 3 / 12 + A2 * (y2 - yc) ** 2;
+    return { Z: I / Math.max(yc, tf + hr - yc), yc };
+  }
+
+  // Print settings embedded in 3MF exports.
+  const PRINT = {
+    walls: 5, infill: 40, pattern: 'gyroid', top: 5, bottom: 5, layer: 0.2,
+    material: 'PETG or ASA (avoid PLA: it creeps under the constant bolt load and softens in a hot car)',
+  };
+
+  const round = (v, n = 2) => Math.round(v * 10 ** n) / 10 ** n;
+  const ceilTo = (v, s) => Math.ceil(v / s - 1e-9) * s;
+  const pol = (r, deg) => [r * Math.cos(deg * D2R), r * Math.sin(deg * D2R)];
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+  function fmtIn(inches) {
+    const whole = Math.floor(inches + 1e-9);
+    const frac = inches - whole;
+    if (frac < 1e-6) return `${whole}"`;
+    let n = Math.round(frac * 16), den = 16;
+    while (n % 2 === 0) { n /= 2; den /= 2; }
+    return whole ? `${whole}-${n}/${den}"` : `${n}/${den}"`;
+  }
+  const mm = (v, n = 1) => `${round(v, n)} mm`;
+  const mmIn = (v) => `${round(v, 1)} mm (${round(v / IN, 3)}")`;
+
+  function stdLen(minMM) {
+    for (const l of STD_LEN_IN) if (l * IN >= minMM - 1e-6) return l;
+    return null;
+  }
+
+  function defaultParams(preset = '6') {
+    const m = MIRRORS[preset];
+    return {
+      mirror: preset,
+      mirrorThick: m.thick,
+      tubeID: m.tubeID,
+      tubeWall: 3.175,
+      retention: 'rtv',
+      fan: m.fan,
+      bed: 220,
+      fitClear: 0.6,
+      gapNominal: 10,
+      // collimation travel per pair: sized so the worst case (one pair out, two
+      // in) tilts the mirror about 2.5° — several times what collimation needs
+      adj: Math.max(1, Math.round(Math.tan(2.5 * D2R) * 0.75 * 0.65 * m.D / 2 * 2) / 2),
+      lateralGap: 0.75,
+      preload: 100,         // N per bolt when the push-pull pairs are locked (finger-snug)
+      clipGap: 0.8,
+    };
+  }
+
+  // ----- small 2D geometry helpers used by the wall checks ------------------
+  function sectorPolygon(r1, r2, a1, a2, n = 48) {
+    const pts = [];
+    for (let i = 0; i <= n; i++) pts.push(pol(r2, a1 + (a2 - a1) * i / n));
+    for (let i = n; i >= 0; i--) pts.push(pol(r1, a1 + (a2 - a1) * i / n));
+    return pts;
+  }
+  function segDist(p, a, b) {
+    const vx = b[0] - a[0], vy = b[1] - a[1];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / (vx * vx + vy * vy)));
+    return Math.hypot(p[0] - a[0] - t * vx, p[1] - a[1] - t * vy);
+  }
+  function inPoly(p, pts) {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  // signed distance from a point to a cut-out region (negative = inside)
+  function distToCut(p, cut) {
+    if (cut.type === 'circle') return dist(p, cut.c) - cut.r;
+    const pts = cut.pts;
+    let d = Infinity;
+    for (let i = 0; i < pts.length; i++) d = Math.min(d, segDist(p, pts[i], pts[(i + 1) % pts.length]));
+    // the polygon is inscribed in the true sector, so allow for chord sagitta
+    return inPoly(p, pts) ? -d : d - 0.02;
+  }
+  // distance from a point inside a rectangle (local radial frame) to its edges
+  function rectInnerDist(p, rect) {
+    const c = Math.cos(-rect.ang * D2R), s = Math.sin(-rect.ang * D2R);
+    const x = p[0] * c - p[1] * s, y = p[0] * s + p[1] * c;
+    return Math.min(x - rect.r1, rect.r2 - x, rect.w / 2 - Math.abs(y));
+  }
+  // distance from a point to an axis-aligned square centred on the origin
+  const rotPt = (p, deg) => { const c = Math.cos(deg * D2R), s = Math.sin(deg * D2R); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; };
+  function distToSquare(p, half) {
+    const dx = Math.max(Math.abs(p[0]) - half, 0), dy = Math.max(Math.abs(p[1]) - half, 0);
+    return Math.hypot(dx, dy);
+  }
+
+  // ----- collimation pose model ------------------------------------------------
+  // A pose is given by the three pad displacements dz_k (each ±adj).  The pads
+  // define a plane z = a·x + b·y + c; the mirror-side assembly is rotated so its
+  // normal matches that plane.  The rotation pivot is the mid-plane of the
+  // rear-plate pull-bolt holes (the pull bolts are rigid in the mirror plate and
+  // are centred by those holes), and a Z shift puts the plate centre at +c.
+  function extremePoses(pairs, adj) {
+    const P = pairs.map(p => p.pull);
+    const det3 = (m) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    const A = P.map(([x, y]) => [x, y, 1]), D0 = det3(A);
+    const poses = [];
+    for (let m = 0; m < 8; m++) {
+      const dz = [0, 1, 2].map(k => ((m >> k) & 1 ? 1 : -1) * adj);
+      const col = (j) => A.map((row, i) => row.map((v, c) => (c === j ? dz[i] : v)));
+      const a = det3(col(0)) / D0, b = det3(col(1)) / D0, c = det3(col(2)) / D0;
+      const nl = Math.hypot(a, b, 1), n = [-a / nl, -b / nl, 1 / nl];
+      const theta = Math.acos(n[2]);
+      const al = Math.hypot(n[0], n[1]);
+      const axis = al > 1e-12 ? [-n[1] / al, n[0] / al, 0] : [1, 0, 0];  // z × n
+      poses.push({ dz, a, b, c, n, theta, axis, label: dz.map(v => (v > 0 ? '+' : '−')).join('') });
+    }
+    return poses;
+  }
+  // Rodrigues rotation of v about unit axis k (through origin) by angle t
+  function rotAxis(v, k, t) {
+    const c = Math.cos(t), s = Math.sin(t), dot = k[0] * v[0] + k[1] * v[1] + k[2] * v[2];
+    const cr = [k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2], k[0] * v[1] - k[1] * v[0]];
+    return [0, 1, 2].map(i => v[i] * c + cr[i] * s + k[i] * dot * (1 - c));
+  }
+  // Z shift that puts the mirror-plate centre (0,0,z_mb) at z_mb + c after rotation
+  function poseShift(d, q) {
+    const o = rotAxis([0, 0, d.z_mb - d.z_pivot], q.axis, q.theta);
+    return d.z_mb + q.c - (o[2] + d.z_pivot);
+  }
+  function poseApply(d, q, v) {
+    const r = rotAxis([v[0], v[1], v[2] - d.z_pivot], q.axis, q.theta);
+    return [r[0], r[1], r[2] + d.z_pivot + poseShift(d, q)];
+  }
+
+  // =========================================================================
+  // computeDesign: all dimensions, feature positions, checks and BOM.
+  // Assembly coordinates: +Z points forward (toward the sky end of the tube),
+  // z = 0 is the rear end of the tube.  The first push-pull pair is at +Y.
+  // =========================================================================
+  function computeDesign(input) {
+    const p = { ...defaultParams(input.mirror || '6'), ...input };
+    const errors = [], warnings = [], notes = [];
+    const preset = MIRRORS[p.mirror];
+    if (!preset) throw new Error(`Unknown mirror preset ${p.mirror}`);
+
+    const D = preset.D, Rm = D / 2;
+    const tMir = +p.mirrorThick;
+    const Rt = p.tubeID / 2;
+    const adj = +p.adj;
+    const clips = p.retention === 'clips';
+
+    const pbKey = D <= 6.5 * IN ? '#10-24' : '1/4-20';
+    const pb = FASTENERS[pbKey];
+    const clipF = FASTENERS['#6-32'];
+    const tubeF = FASTENERS['#8-32'];
+    const fan = p.fan ? FANS[p.fan] : null;
+    const fanF = fan ? FASTENERS[fan.screw] : null;
+
+    if (!(tMir > 3 && tMir < 100)) errors.push('Mirror thickness must be between 3 and 100 mm.');
+
+    // ----- loads used to size parts (see STRENGTH) ------------------------------
+    const S = STRENGTH;
+    const mMirror = Math.PI * Rm * Rm * tMir / 1000 * S.glassDensity / 1000;   // kg
+    const W = mMirror * 9.81;                                                 // N
+    const Fpre = +p.preload;
+    // local bending where the pull and push bolts of a pair load a plate in
+    // opposite directions: M ≈ F·s/2 over an effective width ≈ s, so the
+    // required thickness is independent of the spacing: t = √(3F / (η σ))
+    // (sized for the preload plus each pair's share of the mirror side's weight,
+    // with a 50% allowance for the mirror plate itself)
+    const Wside0 = 1.5 * W;
+    const tPair = ceilTo(Math.sqrt(3 * (Fpre + S.handling * Wside0 / 3) / (S.eta * S.sigmaXY)), 0.5);
+    if (!(p.tubeID > D)) errors.push('Tube ID must be larger than the mirror diameter.');
+
+    // ----- rear tube plate ---------------------------------------------------
+    const Rro = Rt - p.fitClear / 2;                // outside radius (slip fit in tube)
+    const skirtT = round(tubeF.insLen + 1.4, 1);    // radial skirt thickness
+    const Rri = Rro - skirtT;
+
+    // ----- push-pull pair layout ---------------------------------------------
+    const Rpad = 0.65 * Rm;                         // support radius, ~optimal for 3 points
+    // pad column radius: wall around the pull insert, or (RTV) enough cup area
+    // that 3 RTV pads carry the handling load in shear
+    const padRtv = clips ? 0 : Math.sqrt(S.handling * W / (3 * Math.PI * S.tauRTV)) + 1.5;
+    const padR = ceilTo(Math.max(pb.insOD / 2 + RULES.wallDesign, padRtv), 0.1);
+    const nutCorner = pb.nutAF / Math.cos(30 * D2R);
+    const rPB = Math.max(pb.insOD / 2 + RULES.wallDesign, nutCorner / 2 + 0.5);
+    const washerR = pb.washerOD / 2;
+    const contactR = pb.major / 2 + 2;              // solid zone where the push bolt bears
+    const sp = Math.ceil(Math.max(washerR + rPB + RULES.filletBoss + 0.5, padR + contactR + 0.5) * 2) / 2;
+    const delta = 2 * Math.asin(sp / (2 * Rpad)) * R2D;
+    const pairs = [0, 1, 2].map(k => {
+      const th = 90 + 120 * k;
+      return { k, th, pull: pol(Rpad, th), push: pol(Rpad, th + delta), pushAng: th + delta };
+    });
+
+    // ----- collimation poses ---------------------------------------------------
+    // Each pair can move ±adj, so the extreme poses are the 8 corners of that
+    // cube.  The worst tilt is one pair fully out and the other two fully in.
+    const poses = extremePoses(pairs, adj);
+    const tiltMax = Math.max(...poses.map(q => q.theta));
+
+    // ----- fan and central opening ------------------------------------------
+    let r_open, fanHoles = [], fanRot = 0;
+    const rearFeatures = []; // circles on the rear face that the fan body must clear
+    for (const pr of pairs) {
+      rearFeatures.push({ c: pr.pull, r: washerR, what: 'pull-bolt washer' });
+      rearFeatures.push({ c: pr.push, r: rPB + RULES.filletBoss, what: 'push-bolt boss' });
+    }
+    const openLimit = Rpad - Math.max(washerR, rPB) - RULES.web;
+    if (fan) {
+      const s = fan.spacing / 2;
+      // the fan can sit at any rotation: pick the one with most clearance to the bolts
+      const clearAt = (rot) => Math.min(...rearFeatures.map(f => distToSquare(rotPt(f.c, -rot), fan.size / 2) - f.r));
+      let best = -Infinity;
+      for (let a = 0; a < 90; a += 0.5) { const c = clearAt(a); if (c > best + 1e-9) { best = c; fanRot = a; } }
+      fanHoles = [[s, s], [-s, s], [-s, -s], [s, -s]].map(c => rotPt(c, fanRot));
+      r_open = Math.min(fan.opening / 2, Math.SQRT2 * s - fanF.insOD / 2 - RULES.wallDesign, openLimit);
+      if (r_open < fan.opening / 2 - 0.05)
+        notes.push(`Fan opening reduced to Ø${round(2 * r_open, 1)} mm (fan blade Ø${fan.opening}) to keep walls around the fan inserts and bolts.`);
+      for (const f of rearFeatures) {
+        const d = distToSquare(rotPt(f.c, -fanRot), fan.size / 2) - f.r;
+        if (d < 1) errors.push(`${fan.size} mm fan body would overlap a ${f.what}. Choose a smaller fan.`);
+      }
+      if (fan.size / 2 * Math.SQRT2 > Rri - 1) errors.push(`${fan.size} mm fan does not fit inside the rear-plate skirt. Choose a smaller fan.`);
+    } else {
+      r_open = Math.min(0.3 * Rm, openLimit);
+    }
+    r_open = round(r_open, 1);
+
+    // ----- vent windows in the rear plate -------------------------------------
+    const windows = [];
+    {
+      let r_wi = r_open + RULES.web;
+      if (fan) r_wi = Math.max(r_wi, fan.size / 2 * Math.SQRT2 + 3, Math.SQRT2 * fan.spacing / 2 + fanF.insOD / 2 + RULES.web);
+      const r_wo = Rri - RULES.web;
+      const aPull = Math.asin(Math.min(1, (washerR + RULES.web) / Rpad)) * R2D;
+      const aPush = Math.asin(Math.min(1, (rPB + RULES.filletBoss + RULES.web) / Rpad)) * R2D;
+      for (const pr of pairs) {
+        const a1 = pr.th + delta + aPush, a2 = pr.th + 120 - aPull;
+        if (a2 - a1 >= 15 && r_wo - r_wi >= 8) windows.push({ r1: round(r_wi, 1), r2: round(r_wo, 1), a1, a2 });
+      }
+      if (!windows.length) notes.push('Rear plate too small for vent windows; it is solid apart from the central opening.');
+    }
+
+    // ----- rear plate thickness: max of the rule of thumb, the push-pull pair
+    // bending, and the spokes between vent windows carrying the mirror side's
+    // weight out to the skirt (tube vertical)
+    const tRuleR = p.tubeID <= 230 ? 6 : 8;
+    const spokeAng = (windows.length ? 120 - (windows[0].a2 - windows[0].a1) : 120) * D2R;
+    const spokeB = (windows.length ? windows[0].r2 : Rri) * spokeAng;
+    const Mspoke = S.handling * Wside0 / 3 * (Rri - Rpad);
+    const tSpoke = ceilTo(Math.sqrt(6 * Mspoke / (S.eta * spokeB * S.sigmaXY)), 0.5);
+    const t_r = Math.max(tRuleR, tPair, tSpoke);
+    const h_pb = Math.max(pb.insLen + 4, t_r + 2);  // push-insert boss total height
+    const h_so = ceilTo(Math.max(tubeF.insOD + 5, h_pb - t_r + 1, 10), 0.5); // skirt below plate
+    const H_s = t_r + h_so;                         // rear plate overall height
+    const z_rr = h_so;                              // rear face of the plate web
+    const z_rf = H_s;                               // front face (toward mirror)
+    // The pull bolt is rigid in the mirror plate and tilts with it inside its
+    // rear-plate clearance hole, so size that hole for the worst tilt.
+    const pullClear = Math.max(pb.clear, Math.ceil((pb.major + t_r * Math.tan(tiltMax) + 0.3) * 10) / 10);
+
+    // ----- tube attachment ------------------------------------------------------
+    const nTube = p.tubeID < 200 ? 3 : 6;
+    const tubeAngles = Array.from({ length: nTube }, (_, i) => 30 + i * 360 / nTube);
+    const z_tube = h_so / 2;
+
+    // ----- mirror plate -------------------------------------------------------
+    // Mirror plate: base thickness, lateral-post depth and an optional rib along
+    // each arm are sized together.  Design lateral load (tube horizontal): the
+    // whole mirror weight × handling factor on one post, acting at the mirror's
+    // mid-thickness.  The post is printed upright, so its root bends ACROSS the
+    // layers (σZ); the arm bends along the layers (σXY).
+    const cupD = clips ? 0 : RULES.rtvCupDepth;
+    const cupR = padR - 1.5;
+    const holeDepth = pb.insLen + 2 * adj + 1.5;    // pull-insert blind hole (insert + bolt travel)
+    const capTop = 2.5;
+    const latGap = +p.lateralGap;
+    const wTip = clips ? 16 : 14;
+    const wRoot = Math.max(wTip, Math.min(0.25 * Rm, 34));
+    const wRib = 6;
+    const R_core = Rpad + Math.max(padR, contactR) + 5;
+    const r_root = Math.max(R_core - 10, Rpad);
+    const Flat = S.handling * W;
+    const tRuleM = D <= 6.5 * IN ? 5 : (D <= 8.5 * IN ? 6 : 8);
+    const postRule = clips ? Math.ceil(clipF.insOD + 2 * RULES.wallDesign) : 8;
+    let t_m = Math.max(tRuleM, tPair), H_col, padH, postD, R_mpo, hRib = 0, armSigma = 0, wArm = wTip;
+    for (let iter = 0; iter < 60; iter++) {
+      H_col = holeDepth + capTop + cupD;            // pad column height above mirror-plate rear face
+      if (H_col - t_m < 5) H_col = t_m + 5;
+      padH = H_col - t_m;
+      const hPost = padH + tMir / 2;                // load height above the post root (top of base)
+      postD = Math.max(postRule, Math.ceil(Math.sqrt(6 * Flat * hPost / (S.eta * wTip * S.sigmaZ))));
+      R_mpo = Rm + latGap + postD;
+      const rS = Rm + latGap;                       // arm section just inboard of the post
+      wArm = wRoot + (wTip - wRoot) * (rS - r_root) / (R_mpo - r_root);
+      let ok = false;
+      for (hRib = 0; hRib <= padH - 2 + 1e-9; hRib += 0.5) {
+        const sec = tSection(wArm, t_m, wRib, hRib);
+        armSigma = Flat * (H_col + tMir / 2 - sec.yc) / (S.eta * sec.Z);
+        if (armSigma <= S.sigmaXY) { ok = true; break; }
+      }
+      if (ok) break;
+      t_m += 0.5;
+    }
+    const tArmNote = t_m > Math.max(tRuleM, tPair) ? 'arm bending' : (tPair > tRuleM ? 'push-pull preload' : 'rule of thumb');
+
+    // choose standard pull-bolt length, then set the nominal gap to suit it
+    const wT = pb.washerT;
+    const pullMin = wT + t_r + p.gapNominal + adj + pb.insLen;
+    const pullLenIn = stdLen(pullMin);
+    const Lpull = pullLenIn * IN;
+    const g = Lpull - wT - t_r - adj - pb.insLen;   // nominal plate gap (>= gapNominal)
+    const pushLenIn = stdLen(h_pb + g + adj + pb.jamT + 1.5);
+    const Lpush = pushLenIn * IN;
+
+    const z_mb = z_rf + g;                          // mirror plate rear face
+    const z_mf = z_mb + t_m;                        // mirror plate front face
+    const z_pad = z_mb + H_col;                     // pad top = mirror back
+    const z_mirF = z_pad + tMir;                    // mirror front face
+
+    const postC = Rm + latGap + postD / 2;          // post centre radius
+    const z_post = clips ? z_mirF + p.clipGap : z_pad + tMir * 0.5;
+    const clipHoleDepth = clipF.insLen + 2.5;
+
+    let r_c = Math.min(fan ? r_open : 0.25 * Rm, Rpad - padR - RULES.web, Rpad - contactR - RULES.web);
+    r_c = round(r_c, 1);
+
+    const vents = [];
+    {
+      const rv = (r_c + R_core) / 2;
+      for (const pr of pairs) {
+        const ang = pr.th + 60 + delta / 2;
+        const c = pol(rv, ang);
+        let rho = (R_core - r_c) / 2 - RULES.web;
+        for (const q of pairs) {
+          rho = Math.min(rho, dist(c, q.pull) - padR - RULES.web, dist(c, q.push) - contactR - RULES.web);
+        }
+        rho = Math.floor(rho * 2) / 2;
+        if (rho >= 4) vents.push({ c, r: rho, ang, rv });
+      }
+    }
+
+    // clips
+    const clip = clips ? {
+      t: RULES.clipThick,
+      r1: Rm - RULES.clipOverlap,
+      r2: R_mpo,
+      w: wTip,
+      holeR: postC,
+      z: z_post,
+    } : null;
+    const clipLenIn = clips ? stdLen(RULES.clipThick + clipF.insLen) : null;
+
+    // other hardware lengths
+    const tubeLenIn = stdLen(p.tubeWall + tubeF.insLen);
+    const fanLenIn = fan ? stdLen(fan.thick + fanF.insLen) : null;
+
+    const d = {
+      p, preset, D, Rm, tMir, Rt, adj, clips, pbKey, pb, clipF, tubeF, fan, fanF,
+      t_r, Rro, Rri, skirtT, h_pb, h_so, H_s, z_rr, z_rf,
+      Rpad, padR, rPB, washerR, nutCorner, contactR, sp, delta, pairs, poses, tiltMax, pullClear,
+      r_open, fanHoles, fanRot, windows, nTube, tubeAngles, z_tube,
+      t_m, cupD, cupR, holeDepth, capTop, H_col, padH,
+      Lpull, pullLenIn, Lpush, pushLenIn, g, z_mb, z_mf, z_pad, z_mirF,
+      latGap, postD, wTip, wRoot, r_root, R_mpo, postC, z_post, clipHoleDepth, R_core, r_c, vents,
+      mMirror, W, Fpre, tPair, tRuleR, tSpoke, spokeB, tRuleM, tArmNote, postRule, hRib, wRib, wArm, armSigma, padRtv,
+      clip, clipLenIn, tubeLenIn, fanLenIn,
+      errors, warnings, notes,
+    };
+    d.zTop = clips ? z_post + RULES.clipThick : Math.max(z_mirF, z_post);
+    d.z_pivot = z_rr + t_r / 2;                     // effective tilt pivot: mid-plane of the pull-bolt holes
+    // mirror-plate fillets; the post fillet reaches under the mirror edge, so keep it ≥ 2 mm below the glass
+    d.fPad = RULES.filletPad;
+    d.fPost = Math.max(0, Math.min(RULES.filletPost, padH - 2));
+    d.fRib = hRib > 0 ? Math.min(RULES.filletRib, hRib) : 0;
+    d.checks = runChecks(d);
+    d.strength = runStrength(d);
+    for (const c of d.strength) if (!c.pass) errors.push(`Strength check failed: ${c.case} – ${c.item} (${c.value} ${c.unit} vs allowable ${c.allow} ${c.unit})`);
+    for (const c of d.checks) if (!c.pass) errors.push(`Check failed: ${c.part} – ${c.item} (${c.value} vs required ${c.req})`);
+    d.bom = makeBOM(d);
+    d.holes = makeHoleSchedule(d);
+    return d;
+  }
+
+  // =========================================================================
+  // Checks: wall thickness around every hole, caps, thread engagement,
+  // bolt travel, and clearances.  Values in mm.
+  // =========================================================================
+  function runChecks(d) {
+    const out = [];
+    const add = (part, item, value, req, cmp = '>=') => {
+      const pass = cmp === '>=' ? value >= req - 1e-6 : value <= req + 1e-6;
+      out.push({ part, item, value: round(value, 2), req: `${cmp === '>=' ? '≥' : '≤'} ${round(req, 2)}`, pass });
+    };
+    const W = RULES.wallMin;
+
+    // ----- rear plate: all vertical holes vs each other, cut-outs and edges
+    const rpHoles = [];
+    d.pairs.forEach((pr, i) => {
+      rpHoles.push({ name: `pull clearance hole P${i + 1}`, c: pr.pull, r: d.pullClear / 2 });
+      rpHoles.push({ name: `push insert P${i + 1}`, c: pr.push, r: d.pb.insOD / 2, boss: d.rPB });
+    });
+    d.fanHoles.forEach((c, i) => rpHoles.push({ name: `fan insert F${i + 1}`, c, r: d.fanF.insOD / 2 }));
+    const rpCuts = [{ type: 'circle', c: [0, 0], r: d.r_open }]
+      .concat(d.windows.map(w => ({ type: 'poly', pts: sectorPolygon(w.r1, w.r2, w.a1, w.a2) })));
+    for (const h of rpHoles) {
+      let wall = d.Rro - Math.hypot(...h.c) - h.r;
+      if (h.boss) wall = Math.min(wall, h.boss - h.r);
+      for (const o of rpHoles) if (o !== h) wall = Math.min(wall, dist(h.c, o.c) - h.r - o.r);
+      for (const c of rpCuts) wall = Math.min(wall, distToCut(h.c, c) - h.r);
+      add('Rear plate', `wall around ${h.name}`, wall, W);
+    }
+    // washers and bosses must sit on solid plate (clear of windows / opening)
+    d.pairs.forEach((pr, i) => {
+      let m = Infinity;
+      for (const c of rpCuts) m = Math.min(m, distToCut(pr.pull, c) - d.washerR);
+      add('Rear plate', `solid bearing under pull washer P${i + 1}`, m, 0.5);
+      let b = Infinity;
+      for (const c of rpCuts) b = Math.min(b, distToCut(pr.push, c) - d.rPB - RULES.filletBoss);
+      add('Rear plate', `push boss P${i + 1} (incl. root fillet) clear of cut-outs`, b, 0.5);
+    });
+    add('Rear plate', 'wall: tube-screw insert to skirt edge', d.z_tube - d.tubeF.insOD / 2, W);
+    add('Rear plate', 'skirt thickness ≥ tube insert length', d.skirtT - d.tubeF.insLen, 0);
+    add('Rear plate', 'push insert fits boss height', d.h_pb - d.pb.insLen, 0);
+    if (d.fan) add('Rear plate', 'fan insert fits plate thickness', d.t_r - d.fanF.insLen, 0);
+    // tube-screw spacing (tangential wall between neighbouring radial inserts)
+    const tubeArc = 2 * d.Rro * Math.sin(Math.PI / d.nTube) - d.tubeF.insOD;
+    add('Rear plate', 'wall between tube-screw inserts', tubeArc, W);
+
+    // ----- mirror plate
+    const mpHoles = [];
+    d.pairs.forEach((pr, i) => mpHoles.push({ name: `pull insert P${i + 1}`, c: pr.pull, r: d.pb.insOD / 2, boss: d.padR }));
+    const mpCuts = [{ type: 'circle', c: [0, 0], r: d.r_c }].concat(d.vents.map(v => ({ type: 'circle', c: v.c, r: v.r })));
+    for (const h of mpHoles) {
+      let wall = h.boss - h.r;
+      for (const o of mpHoles) if (o !== h) wall = Math.min(wall, dist(h.c, o.c) - h.r - o.r);
+      for (const c of mpCuts) wall = Math.min(wall, distToCut(h.c, c) - h.r);
+      add('Mirror plate', `wall around ${h.name}`, wall, W);
+    }
+    d.pairs.forEach((pr, i) => {
+      const slide = (d.z_mb - d.z_pivot) * Math.sin(d.tiltMax);   // contact point slides this far at full tilt
+      let m = d.R_core - Math.hypot(...pr.push) - d.contactR - slide;
+      for (const c of mpCuts) m = Math.min(m, distToCut(pr.push, c) - d.contactR - slide);
+      add('Mirror plate', `solid push-bolt contact P${i + 1} (incl. ${round(slide, 1)} mm slide at full tilt)`, m, 0);
+      let pc = Infinity;
+      for (const c of mpCuts) pc = Math.min(pc, distToCut(pr.pull, c) - d.padR - d.fPad);
+      add('Mirror plate', `pad column P${i + 1} (incl. root fillet) clear of vents`, pc, 1);
+    });
+    add('Mirror plate', 'cap above pull insert hole', d.H_col - d.holeDepth - d.cupD, RULES.capMin);
+    if (d.clips) {
+      d.pairs.forEach((pr, i) => {
+        const rect = { r1: d.Rm + d.latGap, r2: d.R_mpo, w: d.wTip, ang: pr.th };
+        const wall = rectInnerDist(pol(d.postC, pr.th), rect) - d.clipF.insOD / 2;
+        add('Mirror plate', `wall around clip insert C${i + 1}`, wall, W);
+      });
+      add('Mirror plate', 'clip insert hole depth within post', d.z_post - d.z_mf - d.clipHoleDepth, RULES.capMin);
+      // clip part
+      const c = d.clip;
+      const wall = Math.min(c.w / 2, c.r2 - c.holeR, c.holeR - c.r1) - d.clipF.clear / 2;
+      add('Clip', 'wall around screw hole', wall, W);
+      add('Clip', 'gap between clip and mirror face', d.z_post - d.z_mirF, 0.5);
+      const clipTip = d.clipLenIn * IN - RULES.clipThick;
+      add('Clip', 'clip-screw thread engagement', clipTip, d.clipF.insLen);
+      add('Clip', 'clip-screw tip vs hole depth', clipTip, d.clipHoleDepth - 0.3, '<=');
+    }
+
+    // ----- bolts and travel
+    const eMax = d.Lpull - d.pb.washerT - d.t_r - (d.g + d.adj);
+    const tipMin = d.Lpull - d.pb.washerT - d.t_r - (d.g - d.adj);
+    add('Push-pull', `pull-bolt engagement at max gap (${round(d.g + d.adj, 1)} mm)`, eMax, d.pb.insLen);
+    add('Push-pull', `pull-bolt tip depth at min gap (${round(d.g - d.adj, 1)} mm)`, tipMin, d.holeDepth - 0.5, '<=');
+    const pushStick = d.Lpush - (d.h_pb + d.g + d.adj);
+    add('Push-pull', 'push-bolt length left for jam nut at max gap', pushStick, d.pb.jamT + 1);
+    add('Push-pull', 'min plate gap at full travel', d.g - d.adj, 5);
+    add('Push-pull', 'pair spacing (pull washer to push-boss root fillet)', d.sp - d.washerR - d.rPB - RULES.filletBoss, 0.5);
+    if (d.fan) {
+      const prot = d.fanLenIn * IN - d.fan.thick - d.t_r;
+      add('Fan', 'fan-screw tip protrusion past plate front (must clear mirror plate)', prot, d.g - d.adj - 1, '<=');
+      add('Fan', 'fan-screw thread engagement', d.fanLenIn * IN - d.fan.thick, d.fanF.insLen);
+    }
+
+    // ----- clearances at every extreme collimation pose (8 poses: each pair ±adj)
+    const radialPts = [], rearPts = [];
+    for (const pr of d.pairs) {
+      const c = Math.cos(pr.th * D2R), sn = Math.sin(pr.th * D2R);
+      for (const w of [-d.wTip / 2, d.wTip / 2]) {
+        const xy = [d.R_mpo * c - w * sn, d.R_mpo * sn + w * c];
+        radialPts.push([xy[0], xy[1], d.zTop], [xy[0], xy[1], d.z_mb]);
+        rearPts.push([xy[0], xy[1], d.z_mb]);
+      }
+    }
+    for (let i = 0; i < 72; i++) {
+      const [x, y] = pol(1, i * 5);
+      radialPts.push([d.Rm * x, d.Rm * y, d.z_pad], [d.Rm * x, d.Rm * y, d.z_mirF]);
+      rearPts.push([d.R_core * x, d.R_core * y, d.z_mb]);
+    }
+    let maxR = 0, minGap = Infinity, minFanGap = Infinity, worstR = '', worstZ = '';
+    const fanProt = d.fan ? d.fanLenIn * IN - d.fan.thick - d.t_r : 0;
+    for (const q of d.poses) {
+      for (const v of radialPts) { const t = poseApply(d, q, v), r = Math.hypot(t[0], t[1]); if (r > maxR) { maxR = r; worstR = q.label; } }
+      for (const v of rearPts) { const t = poseApply(d, q, v); if (t[2] - d.z_rf < minGap) { minGap = t[2] - d.z_rf; worstZ = q.label; } }
+      for (const f of d.fanHoles) minFanGap = Math.min(minFanGap, poseApply(d, q, [f[0], f[1], d.z_mb])[2] - (d.z_rf + fanProt));
+    }
+    const tiltDeg = round(d.tiltMax * R2D, 1);
+    const minID = Math.ceil(2 * (maxR + RULES.tiltMargin) * 10) / 10;
+    add('Assembly', `radial clearance to tube, worst of 8 poses at ±${d.adj} mm per pair (${tiltDeg}° max tilt, pose ${worstR}); needs tube ID ≥ ${minID} mm (${round(minID / IN, 2)}")`, d.Rt - maxR, RULES.tiltMargin);
+    add('Assembly', `axial gap mirror plate ↔ rear plate, worst pose (${worstZ})`, minGap, RULES.axialMargin);
+    if (d.fan) add('Assembly', 'gap mirror plate ↔ fan-screw tips, worst pose', minFanGap, 0.5);
+    add('Push-pull', `pull-bolt tilt room in rear-plate hole at ${tiltDeg}°`, (d.pullClear - d.pb.major) - d.t_r * Math.tan(d.tiltMax), 0.1);
+    add('Assembly', 'mirror edge to lateral post gap', d.latGap, 0.25);
+    const tubeOK = d.Rt - d.Rro;
+    add('Assembly', 'rear plate radial fit clearance', tubeOK, 0.1);
+    return out;
+  }
+
+  // =========================================================================
+  // Hex-key / wrench sizes for the hardware we specify (inch sizes).
+  const SHCS_KEY = { '#4-40': '3/32"', '#6-32': '7/64"', '#8-32': '9/64"', '#10-24': '5/32"', '1/4-20': '3/16"' };
+  const BUTTON_KEY = { '#6-32': '5/64"', '#8-32': '3/32"', '#10-24': '1/8"' };
+  const NUT_WRENCH = { '#10-24': '3/8"', '1/4-20': '7/16"' };
+  const BOM_CATEGORIES = ['Printed part', 'Screw', 'Nut / washer', 'Heat-set insert', 'Fan', 'Consumable', 'Tool'];
+
+  // =========================================================================
+  // Strength: hand calculations for each load case against STRENGTH allowables.
+  // Loads: gravity × handling factor; locked push-pull preload per bolt.
+  // =========================================================================
+  function massEstimates(d) {
+    const Vmp = Math.PI * d.R_core ** 2 * d.t_m
+      + 3 * (d.R_mpo - d.R_core) * (d.wRoot + d.wTip) / 2 * d.t_m
+      + 3 * d.postD * d.wTip * (d.z_post - d.z_mf)
+      + 3 * Math.PI * d.padR ** 2 * d.padH
+      + 3 * d.wRib * d.hRib * (d.Rm + d.latGap - d.r_root);
+    const Vrp = Math.PI * d.Rro ** 2 * d.t_r + 2 * Math.PI * d.Rro * d.skirtT * d.h_so;
+    const rho = STRENGTH.plasticDensity;
+    const mMP = Vmp / 1000 * rho / 1000, mRP = Vrp / 1000 * rho / 1000;
+    const mHW = 0.1 + (d.fan ? 0.1 : 0);
+    return { mMP, mRP, mHW, mTotal: d.mMirror + mMP + mRP + mHW };
+  }
+
+  function runStrength(d) {
+    const S = STRENGTH, n = S.handling, out = [];
+    const m = massEstimates(d);
+    const Wside = (d.mMirror + m.mMP) * 9.81;          // mirror + mirror plate
+    const add = (lc, item, value, allow, unit, basis) => {
+      const util = value / allow;
+      out.push({ case: lc, item, value: round(value, 2), allow: round(allow, 2), unit, util: round(util, 2), pass: util <= 1 + 1e-9, basis });
+    };
+    const Flat = n * d.W;
+    // --- A. tube horizontal: lateral load on the posts / RTV / bolts
+    const A = `Tube horizontal: ${round(Flat, 1)} N lateral (mirror ${round(d.mMirror, 2)} kg × ${n})`;
+    const hPost = d.padH + d.tMir / 2;
+    add(A, `lateral post root bending, across layers (${d.postD} × ${d.wTip} mm post, load ${round(hPost, 1)} mm up)`,
+      Flat * hPost / (S.eta * d.wTip * d.postD ** 2 / 6), S.sigmaZ, 'MPa', 'σ = F·h / (η·b·d²/6)');
+    add(A, `arm bending at the post (${round(d.wArm, 1)} × ${d.t_m} mm arm${d.hRib ? ` + ${d.wRib} × ${d.hRib} mm rib` : ''})`,
+      d.armSigma, S.sigmaXY, 'MPa', 'T-section: σ = F·h / (η·Z)');
+    if (!d.clips) add(A, `RTV shear, 3 pads Ø${round(2 * d.cupR, 1)} mm`, Flat / (3 * Math.PI * d.cupR ** 2), S.tauRTV, 'MPa', 'τ = F / (3·π·r²)');
+    const Lb = d.g + d.t_r / 2;
+    add(A, `pull-bolt bending across the gap (steel, ${d.pbKey} root Ø${d.pb.minor})`,
+      Flat / 3 * Lb / (Math.PI * d.pb.minor ** 3 / 32), S.steelBend, 'MPa', 'σ = (F/3)·L / (π·d³/32)');
+    // --- B. tube vertical: weight through the pairs, plus the locked preload
+    const Fax = d.Fpre + n * Wside / 3;
+    const B = `Tube vertical: preload ${d.Fpre} N + ${round(n * Wside / 3, 1)} N weight share per pair`;
+    const ins = S.insertPullout[d.pbKey];
+    add(B, `pull-bolt insert pull-out (mirror plate, ${d.pbKey})`, Fax, ins, 'N', 'assumed sustained allowable');
+    add(B, `push-bolt insert pull-out (rear plate, ${d.pbKey})`, Fax, ins, 'N', 'assumed sustained allowable');
+    add(B, 'push-bolt tip bearing on mirror plate', Fax / (S.tipArea * Math.PI * d.pb.major ** 2 / 4), S.sigmaBear, 'MPa', `σ = F / (${S.tipArea}·π·d²/4)`);
+    add(B, 'pull-bolt washer bearing on rear plate', Fax / (Math.PI * (d.pb.washerOD ** 2 - d.pullClear ** 2) / 4), S.sigmaBear, 'MPa', 'σ = F / washer annulus');
+    add(B, `mirror plate local bending at each pair (t = ${d.t_m} mm)`, 3 * Fax / (S.eta * d.t_m ** 2), S.sigmaXY, 'MPa', 'σ = 3F / (η·t²)');
+    add(B, `rear plate local bending at each pair (t = ${d.t_r} mm)`, 3 * Fax / (S.eta * d.t_r ** 2), S.sigmaXY, 'MPa', 'σ = 3F / (η·t²)');
+    add(B, `rear plate spokes carrying the mirror side to the skirt (${round(d.spokeB, 0)} mm wide)`,
+      6 * (n * Wside / 3 * (d.Rri - d.Rpad)) / (S.eta * d.spokeB * d.t_r ** 2), S.sigmaXY, 'MPa', 'σ = 6·F·L / (η·b·t²)');
+    add(B, `tube-screw bearing in the skirt (${d.nTube} × #8-32, cell ${round(m.mTotal, 2)} kg)`,
+      n * m.mTotal * 9.81 / d.nTube / (d.tubeF.major * d.skirtT), S.sigmaBear, 'MPa', 'σ = F / (d·L)');
+    if (d.clips) {
+      const Fc = n * d.W / 3, a = d.latGap + RULES.clipOverlap / 2, b = d.postD / 2;
+      const C = `Tube pointing down: ${round(Fc, 1)} N on each clip`;
+      add(C, `clip bending over the post edge (${d.clip.w} × ${d.clip.t} mm)`, Fc * a / (S.eta * d.clip.w * d.clip.t ** 2 / 6), S.sigmaXY, 'MPa', 'σ = F·a / (η·b·t²/6)');
+      add(C, 'clip-screw insert pull-out (#6-32, incl. prying)', Fc * (1 + a / b), S.insertPullout['#6-32'], 'N', 'F·(1 + a/b)');
+    } else {
+      add(`Tube pointing down: ${round(n * d.W / 3, 1)} N on each RTV pad`, 'RTV tension', n * d.W / (3 * Math.PI * d.cupR ** 2), S.tauRTV, 'MPa', 'σ = F / (3·π·r²)');
+    }
+    return out;
+  }
+
+  // =========================================================================
+  // Complete bill of materials for one cell.  Rows with the same category,
+  // description, spec and length are merged (quantities summed).
+  // extra.fits (optional, from the CAD build): [{ id, fit, volume }] adds
+  // solid volume and print-bed footprint to the printed-part rows.
+  function makeBOM(d, extra = {}) {
+    const pb = d.pbKey, rows = [];
+    const add = (category, qty, description, spec, length, usedIn, note = '') =>
+      rows.push({ category, qty, description, spec, length, usedIn, note });
+    const printSpec = `${PRINT.walls} walls, ${PRINT.infill}% ${PRINT.pattern}, ${PRINT.layer} mm layers, no supports`;
+    const partInfo = (id) => {
+      const f = (extra.fits || []).find(x => x.id === id);
+      if (!f) return '';
+      const vol = f.volume ? `; solid volume ${round(f.volume / 1000, 1)} cm³` : '';
+      return `; footprint ${round(f.fit.w, 1)} × ${round(f.fit.h, 1)} mm${f.fit.fits ? '' : ` (exceeds ${d.p.bed} mm bed)`}${vol}`;
+    };
+
+    // ----- printed parts
+    add('Printed part', 1, 'Rear tube plate', `PETG or ASA; Ø${round(2 * d.Rro, 1)} × ${round(d.H_s, 1)} mm`, '', 'tube end',
+      printSpec + partInfo('rear-plate'));
+    add('Printed part', 1, 'Mirror plate', `PETG or ASA; ${round(2 * d.R_mpo, 1)} mm across posts × ${round(d.z_post - d.z_mb, 1)} mm tall`, '', 'carries the mirror',
+      printSpec + partInfo('mirror-plate'));
+    if (d.clips) add('Printed part', 3, 'Mirror clip', `PETG or ASA; ${round(d.clip.r2 - d.clip.r1, 1)} × ${d.clip.w} × ${d.clip.t} mm`, '', 'clip posts',
+      printSpec + partInfo('clip'));
+
+    // ----- screws
+    add('Screw', 3, 'Socket head cap screw (pull / adjust)', pb, fmtIn(d.pullLenIn), 'rear plate → mirror plate pad inserts',
+      `a thumbscrew or knob of the same length also works; lock at ≈ ${round(STRENGTH.torqueK * d.pb.major / 1000 * d.Fpre, 2)} N·m`);
+    add('Screw', 3, 'Socket head cap screw (push / lock)', pb, fmtIn(d.pushLenIn), 'rear-plate push bosses', `fully threaded; lock at ≈ ${round(STRENGTH.torqueK * d.pb.major / 1000 * d.Fpre, 2)} N·m`);
+    add('Screw', d.nTube, 'Button head socket cap screw (tube attachment)', '#8-32', fmtIn(d.tubeLenIn), 'through tube wall into skirt',
+      `sized for a ${round(d.p.tubeWall, 2)} mm tube wall`);
+    if (d.clips) add('Screw', 3, 'Socket head cap screw (clips)', '#6-32', fmtIn(d.clipLenIn), 'clips → clip posts');
+    if (d.fan) add('Screw', 4, 'Socket head cap screw (fan mount)', d.fan.screw, fmtIn(d.fanLenIn), 'fan → rear plate');
+
+    // ----- nuts and washers
+    add('Nut / washer', 3, 'Hex jam nut', pb, '', 'push bolts', `${NUT_WRENCH[pb]} across flats`);
+    add('Nut / washer', 3, 'Flat washer, SAE', pb, '', 'under pull-bolt heads', `Ø${round(d.pb.washerOD, 1)} mm OD`);
+
+    // ----- heat-set inserts
+    const ins = (f, key) => `${key}, ${f.insLen} mm long, for Ø${f.insHole} mm hole`;
+    add('Heat-set insert', 3, 'Brass heat-set insert (tapered, for plastics)', ins(d.pb, pb), '', 'rear plate, push bosses', 'install from rear face');
+    add('Heat-set insert', 3, 'Brass heat-set insert (tapered, for plastics)', ins(d.pb, pb), '', 'mirror plate, pad columns', 'install from rear face');
+    add('Heat-set insert', d.nTube, 'Brass heat-set insert (tapered, for plastics)', ins(d.tubeF, '#8-32'), '', 'rear-plate skirt (radial)', 'install from outside of skirt');
+    if (d.clips) add('Heat-set insert', 3, 'Brass heat-set insert (tapered, for plastics)', ins(d.clipF, '#6-32'), '', 'clip posts', 'install from top of post');
+    if (d.fan) add('Heat-set insert', 4, 'Brass heat-set insert (tapered, for plastics)', ins(d.fanF, d.fan.screw), '', 'rear plate, fan mount', 'install from rear face');
+
+    // ----- fan
+    if (d.fan) add('Fan', 1, `${d.fan.size} mm 12 V DC fan`, `${d.fan.model} (${d.fan.size} × ${d.fan.size} × ${d.fan.thick} mm), ${d.fan.spacing} mm hole spacing`, '',
+      'rear face of rear plate', 'blows into the tube; 12 V supply and lead not included');
+
+    // ----- consumables
+    if (!d.clips) add('Consumable', 1, 'Neutral-cure silicone RTV', 'alkoxy/oxime cure — not acetic (vinegar-smelling)', '', 'pad cups',
+      `3 blobs, ${RULES.rtvCupDepth} mm thick`);
+    add('Consumable', 1, 'Filament', 'PETG or ASA', '', 'all printed parts', 'PLA not recommended (creeps under bolt load)');
+
+    // ----- tools
+    const keys = new Map();
+    const needKey = (size, why) => { if (size) keys.set(size, [...(keys.get(size) || []), why]); };
+    needKey(SHCS_KEY[pb], `${pb} socket heads`);
+    needKey(BUTTON_KEY['#8-32'], '#8-32 button heads');
+    if (d.clips) needKey(SHCS_KEY['#6-32'], '#6-32 clip screws');
+    if (d.fan) needKey(SHCS_KEY[d.fan.screw], `${d.fan.screw} fan screws`);
+    for (const [size, why] of keys) add('Tool', 1, 'Hex key', size, '', why.join(', '));
+    add('Tool', 1, 'Wrench', NUT_WRENCH[pb], '', 'push-bolt jam nuts');
+    add('Tool', 1, 'Drill bit', '3/16" (4.8 mm)', '', `${d.nTube} tube-wall holes for #8-32`, 'positions are in the hole schedule (C)');
+    const insSizes = [pb, '#8-32', d.clips ? '#6-32' : null, d.fan ? d.fan.screw : null].filter(Boolean);
+    add('Tool', 1, 'Soldering iron with heat-set insert tips', [...new Set(insSizes)].join(', '), '', 'installing inserts', 'or a dedicated insert press');
+
+    // merge identical rows
+    const merged = [];
+    for (const r of rows) {
+      const m = merged.find(x => x.category === r.category && x.description === r.description && x.spec === r.spec && x.length === r.length);
+      if (m) { m.qty += r.qty; m.usedIn += `; ${r.usedIn}`; if (r.note && !m.note.includes(r.note)) m.note += m.note ? `; ${r.note}` : r.note; }
+      else merged.push({ ...r });
+    }
+    merged.sort((a, b) => BOM_CATEGORIES.indexOf(a.category) - BOM_CATEGORIES.indexOf(b.category));
+    const prefix = { 'Printed part': 'P', 'Screw': 'S', 'Nut / washer': 'N', 'Heat-set insert': 'I', 'Fan': 'F', 'Consumable': 'C', 'Tool': 'T' };
+    const counters = {};
+    for (const r of merged) { counters[r.category] = (counters[r.category] || 0) + 1; r.ref = prefix[r.category] + counters[r.category]; }
+    return merged;
+  }
+
+  function describeConfig(d) {
+    return `${d.preset.label} × ${round(d.tMir, 1)} mm mirror, ${round(d.p.tubeID, 1)} mm (${round(d.p.tubeID / IN, 3)}") ID tube, ` +
+      `${d.clips ? 'clips' : 'RTV'}, ${d.fan ? d.fan.size + ' mm fan' : 'no fan'}, 3 × ${d.pbKey} push-pull pairs`;
+  }
+
+  // CSV (RFC 4180, UTF-8 with BOM so spreadsheets show Ø and ″ correctly).
+  function bomCSV(d, extra = {}) {
+    const q = (v) => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const lines = [['Ref', 'Category', 'Qty', 'Description', 'Size / spec', 'Length', 'Used in', 'Notes', 'Configuration'].map(q).join(',')];
+    const cfg = describeConfig(d);
+    for (const r of makeBOM(d, extra)) lines.push([r.ref, r.category, r.qty, r.description, r.spec, r.length, r.usedIn, r.note, cfg].map(q).join(','));
+    return '﻿' + lines.join('\r\n') + '\r\n';
+  }
+
+  function makeHoleSchedule(d) {
+    const h = [];
+    const pb = d.pb;
+    const ang = (a) => `${round(((a % 360) + 360) % 360, 1)}°`;
+    h.push({ part: 'Rear plate', label: 'A', qty: 3, desc: `${d.pbKey} heat-set insert (push bolt)`, size: `Ø${pb.insHole} thru boss (${round(d.h_pb, 1)} tall)`,
+      loc: `R${round(d.Rpad, 2)} @ ${d.pairs.map(p => ang(p.pushAng)).join(', ')}`, install: 'from rear face' });
+    h.push({ part: 'Rear plate', label: 'B', qty: 3, desc: `${d.pbKey} clearance (pull bolt)${d.pullClear > pb.clear ? ', enlarged so the bolt can tilt' : ''}`, size: `Ø${d.pullClear} thru`,
+      loc: `R${round(d.Rpad, 2)} @ ${d.pairs.map(p => ang(p.th)).join(', ')}`, install: '' });
+    h.push({ part: 'Rear plate', label: 'C', qty: d.nTube, desc: '#8-32 heat-set insert (tube screw), radial teardrop', size: `Ø${d.tubeF.insHole} thru skirt (${d.skirtT})`,
+      loc: `${d.tubeAngles.map(ang).join(', ')}; ${round(d.z_tube, 2)} from tube end`, install: 'from outside of skirt' });
+    if (d.fan) h.push({ part: 'Rear plate', label: 'D', qty: 4, desc: `${d.fan.screw} heat-set insert (fan)`, size: `Ø${d.fanF.insHole} thru`,
+      loc: `${d.fan.spacing} × ${d.fan.spacing} square, rotated ${round(d.fanRot, 1)}°`, install: 'from rear face' });
+    h.push({ part: 'Rear plate', label: 'E', qty: 1, desc: d.fan ? 'Fan opening' : 'Central vent', size: `Ø${round(2 * d.r_open, 1)} thru`, loc: 'centre', install: '' });
+    if (d.windows.length) h.push({ part: 'Rear plate', label: 'F', qty: d.windows.length, desc: 'Vent window (annular sector)', size: `R${d.windows[0].r1}–R${d.windows[0].r2}, ${round(d.windows[0].a2 - d.windows[0].a1, 1)}° wide`,
+      loc: d.windows.map(w => `${ang(w.a1)}–${ang(w.a2)}`).join(', '), install: '' });
+    h.push({ part: 'Mirror plate', label: 'G', qty: 3, desc: `${d.pbKey} heat-set insert (pull bolt), blind`, size: `Ø${pb.insHole} × ${round(d.holeDepth, 1)} deep`,
+      loc: `R${round(d.Rpad, 2)} @ ${d.pairs.map(p => ang(p.th)).join(', ')}`, install: 'from rear face (bed side)' });
+    if (d.clips) h.push({ part: 'Mirror plate', label: 'H', qty: 3, desc: '#6-32 heat-set insert (clip), blind', size: `Ø${d.clipF.insHole} × ${d.clipHoleDepth} deep`,
+      loc: `R${round(d.postC, 2)} @ ${d.pairs.map(p => ang(p.th)).join(', ')}`, install: 'from top of post' });
+    else h.push({ part: 'Mirror plate', label: 'H', qty: 3, desc: 'RTV cup in pad top', size: `Ø${round(2 * d.cupR, 1)} × ${d.cupD} deep`,
+      loc: `R${round(d.Rpad, 2)} @ ${d.pairs.map(p => ang(p.th)).join(', ')}`, install: '' });
+    h.push({ part: 'Mirror plate', label: 'I', qty: 1, desc: 'Central vent', size: `Ø${round(2 * d.r_c, 1)} thru`, loc: 'centre', install: '' });
+    if (d.vents.length) h.push({ part: 'Mirror plate', label: 'J', qty: d.vents.length, desc: 'Vent hole', size: `Ø${round(2 * d.vents[0].r, 1)} thru`,
+      loc: `R${round(d.vents[0].rv, 2)} @ ${d.vents.map(v => ang(v.ang)).join(', ')}`, install: '' });
+    if (d.clips) h.push({ part: 'Clip', label: 'K', qty: 3, desc: '#6-32 clearance', size: `Ø${d.clipF.clear} thru`, loc: `${round(d.clip.holeR - d.clip.r1, 2)} from inner end`, install: '' });
+    return h;
+  }
+
+  // Key dimensions (for the table and the report)
+  function keyDims(d) {
+    const k = [];
+    const add = (group, name, v) => k.push({ group, name, v });
+    add('Rear plate', 'Outside diameter (tube ID − fit)', mmIn(2 * d.Rro));
+    add('Rear plate', 'Skirt inside diameter', mmIn(2 * d.Rri));
+    add('Rear plate', 'Overall height (skirt + plate)', mmIn(d.H_s));
+    add('Rear plate', 'Plate thickness (sized)', `${d.t_r} mm = max(rule ${d.tRuleR}, preload ${d.tPair}, spokes ${d.tSpoke})`);
+    add('Rear plate', 'Push boss Ø × height', `${round(2 * d.rPB, 1)} × ${round(d.h_pb, 1)} mm`);
+    add('Push-pull', 'Bolt size', d.pbKey);
+    add('Push-pull', 'Pair circle diameter', mmIn(2 * d.Rpad));
+    add('Push-pull', 'Pull-to-push spacing (chord)', `${d.sp} mm (${round(d.delta, 2)}°)`);
+    add('Push-pull', 'Nominal plate gap', `${round(d.g, 2)} mm (±${d.adj} mm travel)`);
+    add('Push-pull', 'Max tilt at full travel (one pair out, two in)', `${round(d.tiltMax * R2D, 2)}°`);
+    add('Mirror plate', 'Inside fillets: pad roots / post inner faces / rib sides', `${d.fPad} / ${round(d.fPost, 1)} / ${d.fRib || '—'} mm`);
+    add('Rear plate', 'Inside fillets: skirt joint / boss roots / window corners', `${RULES.filletSkirt} / ${RULES.filletBoss} / ${RULES.filletWindow} mm`);
+    add('Mirror plate', 'Core diameter', mmIn(2 * d.R_core));
+    add('Mirror plate', 'Span across posts', mmIn(2 * d.R_mpo));
+    add('Mirror plate', 'Base thickness (sized)', `${d.t_m} mm — governed by ${d.tArmNote} (rule ${d.tRuleM}, preload ${d.tPair})`);
+    add('Mirror plate', 'Arm rib (width × height)', d.hRib ? `${d.wRib} × ${d.hRib} mm` : 'none needed');
+    add('Mirror plate', 'Lateral post depth (sized)', `${d.postD} mm (minimum ${d.postRule})`);
+    add('Loads', 'Mirror mass (glass at 2.5 g/cm³)', `${round(d.mMirror, 2)} kg`);
+    add('Loads', 'Push-pull lock preload / torque', `${d.Fpre} N per bolt ≈ ${round(STRENGTH.torqueK * d.pb.major / 1000 * d.Fpre, 2)} N·m (finger-snug)`);
+    add('Mirror plate', 'Pad Ø × height above base', `${round(2 * d.padR, 1)} × ${round(d.padH, 1)} mm`);
+    add('Mirror plate', 'Post top above mirror-plate rear face', mm(d.z_post - d.z_mb, 2));
+    add('Mirror', 'Diameter / thickness', `${round(d.D, 1)} / ${round(d.tMir, 1)} mm`);
+    add('Mirror', 'Mirror face above tube end', mmIn(d.z_mirF));
+    add('Assembly', 'Overall cell height', mmIn(d.zTop));
+    return k;
+  }
+
+  // =========================================================================
+  // CAD (replicad).  Parts are built in assembly coordinates and then moved
+  // into their print orientation.
+  // =========================================================================
+  function buildCAD(R, d, { hardware = true } = {}) {
+    const cyl = (r, h, c = [0, 0], z = 0) => R.makeCylinder(r, h, [c[0], c[1], z], [0, 0, 1]);
+    const polyPrism = (pts, z, h) => {
+      let pen = R.draw(pts[0]);
+      for (let i = 1; i < pts.length; i++) pen = pen.lineTo(pts[i]);
+      return pen.close().sketchOnPlane('XY', z).extrude(h);
+    };
+    const radialRect = (r1, r2, w1, w2, ang) => {
+      const c = Math.cos(ang * D2R), s = Math.sin(ang * D2R);
+      const tr = ([x, y]) => [x * c - y * s, x * s + y * c];
+      return [[r1, -w1 / 2], [r2, -w2 / 2], [r2, w2 / 2], [r1, w1 / 2]].map(tr);
+    };
+
+    // ----- rear plate
+    // plate web + skirt as one revolved profile (r along X, z along Z), with a
+    // fillet in the inside corner where the web meets the skirt
+    const fs = RULES.filletSkirt, fsm = [d.Rri - fs + fs * Math.SQRT1_2, d.z_rr - fs + fs * Math.SQRT1_2];
+    let rp = R.draw([0, d.z_rr]).lineTo([d.Rri - fs, d.z_rr]).threePointsArcTo([d.Rri, d.z_rr - fs], fsm)
+      .lineTo([d.Rri, 0]).lineTo([d.Rro, 0]).lineTo([d.Rro, d.H_s]).lineTo([0, d.H_s]).close()
+      .sketchOnPlane('XZ').revolve();
+    // push bosses, each with a cove fillet where it meets the rear face
+    const fb = RULES.filletBoss, zb = d.z_rr;
+    const cove = R.draw([d.rPB, zb]).lineTo([d.rPB + fb, zb])
+      .threePointsArcTo([d.rPB, zb - fb], [d.rPB + fb - fb * Math.SQRT1_2, zb - fb + fb * Math.SQRT1_2]).close()
+      .sketchOnPlane('XZ').revolve();
+    for (const pr of d.pairs) {
+      rp = rp.fuse(cyl(d.rPB, d.h_pb, pr.push, d.H_s - d.h_pb));
+      rp = rp.fuse(cove.clone().translate([pr.push[0], pr.push[1], 0]));
+    }
+    const Hc = d.H_s + 2;
+    for (const pr of d.pairs) {
+      rp = rp.cut(cyl(d.pullClear / 2, Hc, pr.pull, -1));
+      rp = rp.cut(cyl(d.pb.insHole / 2, Hc, pr.push, -1));
+    }
+    for (const c of d.fanHoles) rp = rp.cut(cyl(d.fanF.insHole / 2, Hc, c, -1));
+    rp = rp.cut(cyl(d.r_open, Hc, [0, 0], -1));
+    for (const w of d.windows) {
+      const n = 3;
+      let pen = R.draw(pol(w.r1, w.a1)).lineTo(pol(w.r2, w.a1));
+      pen = pen.threePointsArcTo(pol(w.r2, w.a2), pol(w.r2, (w.a1 + w.a2) / 2));
+      pen = pen.lineTo(pol(w.r1, w.a2));
+      pen = pen.threePointsArcTo(pol(w.r1, w.a1), pol(w.r1, (w.a1 + w.a2) / 2));
+      const fw = Math.min(RULES.filletWindow, (w.r2 - w.r1) / 4, w.r1 * (w.a2 - w.a1) * D2R / 4);
+      rp = rp.cut(pen.close().fillet(fw).sketchOnPlane('XY', d.h_so - 1).extrude(d.t_r + n));
+    }
+    // radial tube-screw holes: teardrop, point toward the tube end (up when printing)
+    const rh = d.tubeF.insHole / 2, zc = d.z_tube;
+    for (const a of d.tubeAngles) {
+      const tear = R.drawCircle(rh).translate(0, zc).fuse(
+        R.draw([-rh * Math.SQRT1_2, zc - rh * Math.SQRT1_2])
+          .lineTo([-(Math.SQRT2 - 1.2) * rh, zc - 1.2 * rh])
+          .lineTo([(Math.SQRT2 - 1.2) * rh, zc - 1.2 * rh])
+          .lineTo([rh * Math.SQRT1_2, zc - rh * Math.SQRT1_2]).close());
+      const t = tear.sketchOnPlane('YZ', d.Rri - RULES.filletSkirt - 1).extrude(d.skirtT + RULES.filletSkirt + 2).rotate(a, [0, 0, 0], [0, 0, 1]);
+      rp = rp.cut(t);
+    }
+
+    // ----- mirror plate
+    let mp = cyl(d.R_core, d.t_m, [0, 0], d.z_mb);
+    for (const pr of d.pairs) {
+      mp = mp.fuse(polyPrism(radialRect(d.r_root, d.R_mpo, d.wRoot, d.wTip, pr.th), d.z_mb, d.t_m));
+      mp = mp.fuse(polyPrism(radialRect(d.Rm + d.latGap, d.R_mpo, d.wTip, d.wTip, pr.th), d.z_mb, d.z_post - d.z_mb));
+      mp = mp.fuse(cyl(d.padR, d.H_col, pr.pull, d.z_mb));
+      if (d.hRib > 0) mp = mp.fuse(polyPrism(radialRect(d.r_root, d.Rm + d.latGap, d.wRib, d.wRib, pr.th), d.z_mf - 0.01, d.hRib + 0.01));
+    }
+    // fillets where the supports meet the plate top (z_mf).  Each is an explicit
+    // cove solid: a square-section strip with a quarter-cylinder removed.
+    const rotZ = (sh, a) => sh.rotate(a, [0, 0, 0], [0, 0, 1]);
+    // pad columns: revolved cove ring above the plate
+    const fp = d.fPad;
+    const padCove = R.draw([d.padR, d.z_mf]).lineTo([d.padR + fp, d.z_mf])
+      .threePointsArcTo([d.padR, d.z_mf + fp], [d.padR + fp - fp * Math.SQRT1_2, d.z_mf + fp - fp * Math.SQRT1_2]).close()
+      .sketchOnPlane('XZ').revolve();
+    const r0 = d.Rm + d.latGap;                     // post inner face
+    for (const pr of d.pairs) {
+      mp = mp.fuse(padCove.clone().translate([pr.pull[0], pr.pull[1], 0]));
+      // lateral post: cove along the inner face, full post width (local x = radial, y = tangential)
+      if (d.fPost > 0) {
+        const f = d.fPost, w = d.wTip;
+        const cove = R.makeBox([r0 - f, -w / 2, d.z_mf - 0.01], [r0 + 0.01, w / 2, d.z_mf + f])
+          .cut(R.makeCylinder(f, w + 2, [r0 - f, -w / 2 - 1, d.z_mf + f], [0, 1, 0]));
+        mp = mp.fuse(rotZ(cove, pr.th));
+      }
+      // arm rib: coves along both sides, from the rib's inner end to the post
+      if (d.fRib > 0) {
+        const f = d.fRib, y0 = d.wRib / 2, L = r0 - d.r_root;
+        for (const sgn of [1, -1]) {
+          const yA = sgn > 0 ? y0 - 0.01 : -y0 - f, yB = sgn > 0 ? y0 + f : -y0 + 0.01;
+          const cove = R.makeBox([d.r_root, yA, d.z_mf - 0.01], [r0 + 0.01, yB, d.z_mf + f])
+            .cut(R.makeCylinder(f, L + 2, [d.r_root - 1, sgn * (y0 + f), d.z_mf + f], [1, 0, 0]));
+          mp = mp.fuse(rotZ(cove, pr.th));
+        }
+      }
+    }
+    for (const pr of d.pairs) {
+      mp = mp.cut(cyl(d.pb.insHole / 2, d.holeDepth + 1, pr.pull, d.z_mb - 1));
+      if (!d.clips) mp = mp.cut(cyl(d.cupR, d.cupD + 1, pr.pull, d.z_pad - d.cupD));
+      if (d.clips) mp = mp.cut(cyl(d.clipF.insHole / 2, d.clipHoleDepth + 1, pol(d.postC, pr.th), d.z_post - d.clipHoleDepth));
+    }
+    mp = mp.cut(cyl(d.r_c, d.t_m + 2, [0, 0], d.z_mb - 1));
+    for (const v of d.vents) mp = mp.cut(cyl(v.r, d.t_m + 2, v.c, d.z_mb - 1));
+
+    // ----- clips (built flat in print orientation, local +X = radial)
+    let clipPrint = null;
+    const clipsAsm = [];
+    if (d.clips) {
+      const c = d.clip;
+      clipPrint = R.makeBox([c.r1, -c.w / 2, 0], [c.r2, c.w / 2, c.t]).cut(cyl(d.clipF.clear / 2, c.t + 2, [c.holeR, 0], -1));
+      for (const pr of d.pairs) clipsAsm.push(clipPrint.clone().rotate(pr.th, [0, 0, 0], [0, 0, 1]).translate([0, 0, c.z]));
+      // put the print copy at the origin
+      clipPrint = clipPrint.translate([-(c.r1 + c.r2) / 2, 0, 0]);
+    }
+
+    const rpPrint = rp.clone().rotate(180, [0, 0, 0], [1, 0, 0]).translate([0, 0, d.H_s]);
+    const mpPrint = mp.clone().translate([0, 0, -d.z_mb]);
+
+    const parts = [
+      { id: 'rear-plate', name: 'Rear tube plate', color: '#4f7cac', asm: [rp], print: rpPrint, count: 1 },
+      { id: 'mirror-plate', name: 'Mirror plate', color: '#c9803a', asm: [mp], print: mpPrint, count: 1 },
+    ];
+    if (d.clips) parts.push({ id: 'clip', name: 'Mirror clip', color: '#5a9e6f', asm: clipsAsm, print: clipPrint, count: 3 });
+
+    const mirror = cyl(d.Rm, d.tMir, [0, 0], d.z_pad);
+
+    let hw = [];
+    if (hardware) hw = buildHardware(R, d, cyl);
+    return { parts, mirror, hardware: hw };
+  }
+
+  function buildHardware(R, d, cyl) {
+    const hw = [];
+    const pb = d.pb;
+    const steel = '#9aa1a8', brass = '#c8a24a';
+    const hex = (af, h, c, z) => R.drawPolysides(af / Math.sqrt(3), 6).translate(c[0], c[1]).sketchOnPlane('XY', z).extrude(h);
+    const add = (kind, name, shape, color = steel, group = 'rear') => hw.push({ kind, name, shape, color, group });
+    for (const pr of d.pairs) {
+      const n = `P${pr.k + 1}`;
+      // pull bolt: washer + head at the rear face, shank forward into the mirror plate
+      add('bolt', `pull washer ${n}`, cyl(pb.washerOD / 2, pb.washerT, pr.pull, d.z_rr - pb.washerT), steel, 'rearBolts');
+      add('bolt', `pull bolt head ${n}`, cyl(pb.head / 2, pb.major, pr.pull, d.z_rr - pb.washerT - pb.major), steel, 'rearBolts');
+      add('bolt', `pull bolt ${n}`, cyl(pb.major / 2, d.Lpull, pr.pull, d.z_rr - pb.washerT), steel, 'rearBolts');
+      // push bolt: tip touches mirror plate rear face; jam nut on the boss
+      add('bolt', `push bolt ${n}`, cyl(pb.major / 2, d.Lpush, pr.push, d.z_mb - d.Lpush), steel, 'rearBolts');
+      add('bolt', `push bolt head ${n}`, cyl(pb.head / 2, pb.major, pr.push, d.z_mb - d.Lpush - pb.major), steel, 'rearBolts');
+      add('bolt', `jam nut ${n}`, hex(pb.nutAF, pb.jamT, pr.push, d.H_s - d.h_pb - pb.jamT), steel, 'rearBolts');
+      add('insert', `push insert ${n}`, cyl(pb.insOD / 2, pb.insLen, pr.push, d.H_s - d.h_pb), brass);
+      add('insert', `pull insert ${n}`, cyl(pb.insOD / 2, pb.insLen, pr.pull, d.z_mb), brass, 'mirrorPlate');
+      if (d.clips) {
+        const c = pol(d.postC, pr.th), f = d.clipF, top = d.z_post + d.clip.t, L = d.clipLenIn * IN;
+        add('bolt', `clip screw ${n}`, cyl(f.major / 2, L, c, top - L), steel, 'clipScrews');
+        add('bolt', `clip screw head ${n}`, cyl(f.head / 2, f.major, c, top), steel, 'clipScrews');
+        add('insert', `clip insert ${n}`, cyl(f.insOD / 2, f.insLen, c, d.z_post - f.insLen), brass, 'mirrorPlate');
+      }
+    }
+    // tube screws (radial)
+    const tf = d.tubeF, L = d.tubeLenIn * IN, Ro = d.Rt + d.p.tubeWall;
+    for (const a of d.tubeAngles) {
+      const sag = (tf.head / 2) ** 2 / (2 * Ro) + 0.02;
+      const sh = R.makeCylinder(tf.major / 2, L, [Ro, 0, d.z_tube], [-1, 0, 0]).rotate(a, [0, 0, 0], [0, 0, 1]);
+      const hd = R.makeCylinder(tf.head / 2, tf.major * 0.55, [Ro + sag, 0, d.z_tube], [1, 0, 0]).rotate(a, [0, 0, 0], [0, 0, 1]);
+      add('bolt', `tube screw ${round(a)}°`, sh, steel, 'tube');
+      add('bolt', `tube screw head ${round(a)}°`, hd, steel, 'tube');
+      add('insert', `tube insert ${round(a)}°`, R.makeCylinder(tf.insOD / 2, tf.insLen, [d.Rro, 0, d.z_tube], [-1, 0, 0]).rotate(a, [0, 0, 0], [0, 0, 1]), brass);
+    }
+    if (d.fan) {
+      const f = d.fan, F = d.fanF, z0 = d.z_rr - f.thick, L = d.fanLenIn * IN;
+      for (const c of d.fanHoles) {
+        add('bolt', 'fan screw', cyl(F.major / 2, L, c, z0), steel, 'fanScrews');
+        add('bolt', 'fan screw head', cyl(F.head / 2, F.major, c, z0 - F.major), steel, 'fanScrews');
+        add('insert', 'fan insert', cyl(F.insOD / 2, F.insLen, c, d.z_rr), brass);
+      }
+    }
+    return hw;
+  }
+
+  function buildFan(R, d) {
+    if (!d.fan) return null;
+    const f = d.fan, z0 = d.z_rr - f.thick;
+    let s = R.makeBox([-f.size / 2, -f.size / 2, z0], [f.size / 2, f.size / 2, d.z_rr]).rotate(d.fanRot, [0, 0, 0], [0, 0, 1]);
+    s = s.cut(R.makeCylinder(f.opening / 2, f.thick + 2, [0, 0, z0 - 1]));
+    s = s.fuse(R.makeCylinder(f.size * 0.17, f.thick - 1, [0, 0, z0 + 0.5]));
+    for (const c of d.fanHoles) s = s.cut(R.makeCylinder(2.2, f.thick + 2, [c[0], c[1], z0 - 1]));
+    return s;
+  }
+
+  function buildTube(R, d, withHoles = true) {
+    const Ro = d.Rt + d.p.tubeWall, len = d.zTop + 25;
+    let t = R.makeCylinder(Ro, len, [0, 0, 0]).cut(R.makeCylinder(d.Rt, len + 2, [0, 0, -1]));
+    if (withHoles) for (const a of d.tubeAngles)
+      t = t.cut(R.makeCylinder(d.tubeF.clear / 2, d.p.tubeWall + 4, [Ro + 2, 0, d.z_tube], [-1, 0, 0]).rotate(a, [0, 0, 0], [0, 0, 1]));
+    return t;
+  }
+
+  // Pairwise intersection volumes between all bodies in the assembly.
+  function interference(R, d, cad) {
+    const groups = [];
+    for (const p of cad.parts) groups.push({ name: p.name, shape: p.asm.length === 1 ? p.asm[0] : R.compoundShapes(p.asm.map(s => s.clone())) });
+    groups.push({ name: 'Mirror', shape: cad.mirror });
+    groups.push({ name: 'Tube', shape: buildTube(R, d) });
+    const fan = buildFan(R, d);
+    if (fan) groups.push({ name: 'Fan', shape: fan });
+    const bolts = cad.hardware.filter(h => h.kind === 'bolt');
+    if (bolts.length) groups.push({ name: 'Bolts, nuts & washers', shape: R.compoundShapes(bolts.map(b => b.shape.clone())) });
+    const results = [];
+    for (let i = 0; i < groups.length; i++) for (let j = i + 1; j < groups.length; j++) {
+      const a = groups[i], b = groups[j];
+      let v = 0;
+      try {
+        const bi = a.shape.boundingBox, bj = b.shape.boundingBox;
+        const [a0, a1] = bi.bounds, [b0, b1] = bj.bounds;
+        const overlap = [0, 1, 2].every(k => a0[k] <= b1[k] + 0.01 && b0[k] <= a1[k] + 0.01);
+        if (overlap) {
+          const x = a.shape.intersect(b.shape);
+          v = R.measureVolume(x);
+        }
+      } catch (e) { v = NaN; }
+      results.push({ a: a.name, b: b.name, volume: round(v, 4), pass: v < 0.01 });
+    }
+    // Tilted: move the mirror side (mirror plate, clips, mirror) into each of the
+    // 8 extreme collimation poses and intersect it with the tube and rear plate.
+    const side = [...cad.parts.filter(p => p.id !== 'rear-plate').flatMap(p => p.asm), cad.mirror];
+    const rear = groups.find(g => g.name === cad.parts[0].name).shape;
+    const tube = groups.find(g => g.name === 'Tube').shape;
+    const worst = { Tube: 0, rear: 0 }, label = { Tube: '', rear: '' };
+    for (const q of d.poses) {
+      const moved = R.compoundShapes(side.map(s => s.clone()))
+        .rotate(q.theta * R2D, [0, 0, d.z_pivot], q.axis).translate([0, 0, poseShift(d, q)]);
+      for (const [k, other] of [['Tube', tube], ['rear', rear]]) {
+        let v;
+        try { v = R.measureVolume(moved.intersect(other)); } catch (e) { v = NaN; }
+        if (!(v <= worst[k])) { worst[k] = v; label[k] = q.label; }
+      }
+    }
+    const tl = `Mirror side tilted (worst of 8 poses, ${round(d.tiltMax * R2D, 1)}° max)`;
+    results.push({ a: tl, b: 'Tube', volume: round(worst.Tube, 4), pass: worst.Tube < 0.01, pose: label.Tube });
+    results.push({ a: tl, b: cad.parts[0].name, volume: round(worst.rear, 4), pass: worst.rear < 0.01, pose: label.rear });
+    return results;
+  }
+
+  // =========================================================================
+  // Mesh helpers, bed fit, 3MF writer
+  // =========================================================================
+  function weldMesh(m) {
+    const map = new Map(), verts = [], remap = new Array(m.vertices.length / 3);
+    for (let i = 0; i < remap.length; i++) {
+      const x = m.vertices[3 * i], y = m.vertices[3 * i + 1], z = m.vertices[3 * i + 2];
+      const key = `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
+      let idx = map.get(key);
+      if (idx === undefined) { idx = verts.length / 3; verts.push(x, y, z); map.set(key, idx); }
+      remap[i] = idx;
+    }
+    const tris = [];
+    for (let i = 0; i < m.triangles.length; i += 3) {
+      const a = remap[m.triangles[i]], b = remap[m.triangles[i + 1]], c = remap[m.triangles[i + 2]];
+      if (a !== b && b !== c && a !== c) tris.push(a, b, c);
+    }
+    return { vertices: verts, triangles: tris };
+  }
+
+  function meshShape(shape, fine = false) {
+    return shape.mesh({ tolerance: fine ? 0.02 : 0.08, angularTolerance: fine ? 0.1 : 0.25 });
+  }
+
+  // Smallest footprint over rotations about Z; fits if both sides <= bed.
+  function bedFit(vertices, bed) {
+    const xs = [], ys = [];
+    let zmin = Infinity, zmax = -Infinity;
+    for (let i = 0; i < vertices.length; i += 3) { xs.push(vertices[i]); ys.push(vertices[i + 1]); zmin = Math.min(zmin, vertices[i + 2]); zmax = Math.max(zmax, vertices[i + 2]); }
+    let best = null;
+    for (let a = 0; a < 180; a += 1) {
+      const c = Math.cos(a * D2R), s = Math.sin(a * D2R);
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (let i = 0; i < xs.length; i++) {
+        const x = xs[i] * c - ys[i] * s, y = xs[i] * s + ys[i] * c;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      const w = x1 - x0, h = y1 - y0, m = Math.max(w, h);
+      if (!best || m < best.max - 1e-9) best = { angle: a, w, h, max: m, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+    }
+    best.height = zmax - zmin;
+    best.fits = best.w <= bed + 1e-6 && best.h <= bed + 1e-6;
+    return best;
+  }
+
+  const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  // items: [{ name, mesh:{vertices,triangles}, fit, count }]
+  function make3MF(zipSync, items, { bed = 220, title = 'Mirror cell' } = {}) {
+    const enc = new TextEncoder();
+    let objects = '', build = '', prusa = '', orca = '';
+    let id = 0;
+    // lay all instances out in one row, centred on the bed
+    const rowW = items.reduce((t, it) => t + (it.fit.w + 10) * it.count, 0) - 10;
+    let offsetX = bed / 2 - rowW / 2;
+    for (const it of items) {
+      id++;
+      const v = it.mesh.vertices, t = it.mesh.triangles;
+      const vs = [], ts = [];
+      for (let i = 0; i < v.length; i += 3) vs.push(`<vertex x="${v[i].toFixed(4)}" y="${v[i + 1].toFixed(4)}" z="${v[i + 2].toFixed(4)}"/>`);
+      for (let i = 0; i < t.length; i += 3) ts.push(`<triangle v1="${t[i]}" v2="${t[i + 1]}" v3="${t[i + 2]}"/>`);
+      objects += `<object id="${id}" name="${xmlEsc(it.name)}" type="model"><mesh><vertices>${vs.join('')}</vertices><triangles>${ts.join('')}</triangles></mesh></object>\n`;
+      const f = it.fit;
+      const a = f.angle * D2R, c = Math.cos(a), s = Math.sin(a);
+      for (let n = 0; n < it.count; n++) {
+        // rotate by the best-fit angle, then centre on the bed (side by side if several)
+        const single = items.length === 1 && it.count === 1;
+        const tx = (single ? bed / 2 : offsetX + f.w / 2) - f.cx;
+        const ty = bed / 2 - f.cy;
+        // rotation applied first (about origin), then translation; fit.cx/cy are in rotated frame
+        build += `<item objectid="${id}" transform="${c.toFixed(6)} ${s.toFixed(6)} 0 ${(-s).toFixed(6)} ${c.toFixed(6)} 0 0 0 1 ${tx.toFixed(4)} ${ty.toFixed(4)} 0" printable="1"/>\n`;
+        offsetX += f.w + 10;
+      }
+      const P = PRINT;
+      prusa += `<object id="${id}" instances_count="${it.count}">\n` +
+        `<metadata type="object" key="name" value="${xmlEsc(it.name)}"/>\n` +
+        `<metadata type="object" key="perimeters" value="${P.walls}"/>\n` +
+        `<metadata type="object" key="fill_density" value="${P.infill}%"/>\n` +
+        `<metadata type="object" key="fill_pattern" value="${P.pattern}"/>\n` +
+        `<metadata type="object" key="top_solid_layers" value="${P.top}"/>\n` +
+        `<metadata type="object" key="bottom_solid_layers" value="${P.bottom}"/>\n` +
+        `<metadata type="object" key="support_material" value="0"/>\n` +
+        `<volume firstid="0" lastid="${t.length / 3 - 1}"><metadata type="volume" key="name" value="${xmlEsc(it.name)}"/></volume>\n</object>\n`;
+      orca += `<object id="${id}">\n<metadata key="name" value="${xmlEsc(it.name)}"/>\n` +
+        `<metadata key="wall_loops" value="${P.walls}"/>\n` +
+        `<metadata key="sparse_infill_density" value="${P.infill}%"/>\n` +
+        `<metadata key="sparse_infill_pattern" value="${P.pattern}"/>\n` +
+        `<metadata key="top_shell_layers" value="${P.top}"/>\n` +
+        `<metadata key="bottom_shell_layers" value="${P.bottom}"/>\n` +
+        `<metadata key="enable_support" value="0"/>\n` +
+        `<part id="${id}" subtype="normal_part"><metadata key="name" value="${xmlEsc(it.name)}"/></part>\n</object>\n`;
+    }
+    // In the 3MF transform "m00 m01 m02 m10 m11 m12 m20 m21 m22 tx ty tz" row-vector form:
+    // x' = x*m00 + y*m10 + tx ; y' = x*m01 + y*m11 + ty  -> m00=c, m01=s, m10=-s, m11=c is a +angle rotation.
+    const model = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n` +
+      `<metadata name="Title">${xmlEsc(title)}</metadata>\n<metadata name="Application">Mirror Cell Designer</metadata>\n` +
+      `<metadata name="Description">Oriented for printing without supports. Suggested: ${PRINT.walls} walls, ${PRINT.infill}% ${PRINT.pattern} infill, ${PRINT.top} top / ${PRINT.bottom} bottom layers, ${PRINT.layer} mm layers, PETG or ASA.</metadata>\n` +
+      `<resources>\n${objects}</resources>\n<build>\n${build}</build>\n</model>\n`;
+    const files = {
+      '[Content_Types].xml': enc.encode(`<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/><Default Extension="config" ContentType="text/xml"/></Types>\n`),
+      '_rels/.rels': enc.encode(`<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>\n`),
+      '3D/3dmodel.model': enc.encode(model),
+      'Metadata/Slic3r_PE_model.config': enc.encode(`<?xml version="1.0" encoding="UTF-8"?>\n<config>\n${prusa}</config>\n`),
+      'Metadata/model_settings.config': enc.encode(`<?xml version="1.0" encoding="UTF-8"?>\n<config>\n${orca}</config>\n`),
+    };
+    return zipSync(files, { level: 6 });
+  }
+
+  // =========================================================================
+  // Dimensioned 2D drawing sheet (SVG).  Pure geometry from the design, no CAD.
+  // =========================================================================
+  function drawSheet(d) {
+    const out = [];
+    const f1 = (v) => round(v, 1);
+    const S = { line: 'var(--ink, #1d2430)', dim: 'var(--dim, #1f6fd1)', hid: 'var(--hid, #8a94a3)', fill: 'var(--part, rgba(79,124,172,0.12))', fill2: 'var(--part2, rgba(201,128,58,0.14))', ghost: 'var(--ghost, rgba(120,170,220,0.18))' };
+    let body = '';
+    const P = (x, y) => `${f1(x)},${f1(y)}`;
+    const text = (x, y, s, o = {}) => `<text x="${f1(x)}" y="${f1(y)}" font-size="${o.size || 3.2}" text-anchor="${o.anchor || 'middle'}" fill="${o.color || S.dim}" ${o.rot ? `transform="rotate(${o.rot} ${f1(x)} ${f1(y)})"` : ''} dominant-baseline="${o.base || 'auto'}" ${o.weight ? `font-weight="${o.weight}"` : ''}>${xmlEsc(s)}</text>`;
+    const line = (a, b, o = {}) => `<line x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(b[0])}" y2="${f1(b[1])}" stroke="${o.color || S.line}" stroke-width="${o.w || 0.35}" ${o.dash ? `stroke-dasharray="${o.dash}"` : ''} ${o.marker ? `marker-start="url(#arr)" marker-end="url(#arr)"` : ''}/>`;
+    const circle = (c, r, o = {}) => `<circle cx="${f1(c[0])}" cy="${f1(c[1])}" r="${f1(r)}" fill="${o.fill || 'none'}" stroke="${o.color || S.line}" stroke-width="${o.w || 0.35}" ${o.dash ? `stroke-dasharray="${o.dash}"` : ''}/>`;
+    const path = (dd, o = {}) => `<path d="${dd}" fill="${o.fill || 'none'}" stroke="${o.color || S.line}" stroke-width="${o.w || 0.35}" ${o.dash ? `stroke-dasharray="${o.dash}"` : ''} fill-rule="evenodd"/>`;
+    const circPath = (c, r) => `M${P(c[0] + r, c[1])}A${f1(r)},${f1(r)} 0 1,0 ${P(c[0] - r, c[1])}A${f1(r)},${f1(r)} 0 1,0 ${P(c[0] + r, c[1])}Z`;
+    // linear dimension between a and b, offset perpendicular by off
+    const dimLin = (a, b, off, label) => {
+      const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+      const nx = -dy / L, ny = dx / L;
+      const a2 = [a[0] + nx * off, a[1] + ny * off], b2 = [b[0] + nx * off, b[1] + ny * off];
+      const ext = (p, q) => line([p[0] + nx * Math.sign(off) * 0.8, p[1] + ny * Math.sign(off) * 0.8], [q[0] + nx * Math.sign(off) * 1.5, q[1] + ny * Math.sign(off) * 1.5], { color: S.dim, w: 0.2 });
+      let ang = Math.atan2(dy, dx) * R2D;
+      if (ang > 90 || ang <= -90) ang += 180;
+      const mid = [(a2[0] + b2[0]) / 2 + nx * 1.2 * Math.sign(off || 1), (a2[1] + b2[1]) / 2 + ny * 1.2 * Math.sign(off || 1)];
+      return ext(a, a2) + ext(b, b2) + line(a2, b2, { color: S.dim, w: 0.25, marker: true }) +
+        text(mid[0], mid[1], label, { rot: ang, base: 'middle' });
+    };
+    // diameter callout across a circle at angle ang (deg, SVG frame)
+    const dimDia = (c, r, ang, label, extend = 12) => {
+      const u = [Math.cos(ang * D2R), Math.sin(ang * D2R)];
+      const b = [c[0] + u[0] * r, c[1] + u[1] * r];
+      const e = [b[0] + u[0] * extend, b[1] + u[1] * extend];
+      const sh = [e[0] + (u[0] >= 0 ? 4 : -4), e[1]];
+      return `<path d="M${P(...e)}L${P(...b)}" fill="none" stroke="${S.dim}" stroke-width="0.25" marker-end="url(#arr)"/>` + line(e, sh, { color: S.dim, w: 0.25 }) +
+        text(sh[0] + (u[0] >= 0 ? 1 : -1), sh[1], label, { anchor: u[0] >= 0 ? 'start' : 'end', base: 'middle' });
+    };
+    const leader = (from, to, label) => line(from, to, { color: S.dim, w: 0.2 }) + circle(from, 0.5, { fill: S.dim, color: S.dim }) +
+      text(to[0] + (to[0] >= from[0] ? 1 : -1), to[1], label, { anchor: to[0] >= from[0] ? 'start' : 'end', base: 'middle' });
+    const arcDim = (c, r, a1, a2, label) => {
+      const p1 = [c[0] + r * Math.cos(a1 * D2R), c[1] + r * Math.sin(a1 * D2R)];
+      const p2 = [c[0] + r * Math.cos(a2 * D2R), c[1] + r * Math.sin(a2 * D2R)];
+      const am = (a1 + a2) / 2, pm = [c[0] + (r + 3) * Math.cos(am * D2R), c[1] + (r + 3) * Math.sin(am * D2R)];
+      return path(`M${P(...p1)}A${f1(r)},${f1(r)} 0 0,${a2 > a1 ? 1 : 0} ${P(...p2)}`, { color: S.dim, w: 0.25 }) +
+        `<path d="M${P(...p1)}A${f1(r)},${f1(r)} 0 0,${a2 > a1 ? 1 : 0} ${P(...p2)}" fill="none" stroke="none" marker-start="url(#arr)" marker-end="url(#arr)"/>` +
+        text(pm[0], pm[1], label, { base: 'middle' });
+    };
+    const title = (x, y, s) => text(x, y, s, { size: 4.2, color: S.line, anchor: 'start', weight: 600 });
+
+    // ---- View 1: rear plate from the rear (outside).  Viewer's right = -X.
+    const RP = (pt) => [-pt[0], -pt[1]];               // assembly XY -> drawing (y down)
+    const W1 = 2 * d.Rro + 90;
+    const c1 = [d.Rro + 45, d.Rro + 22];
+    const T1 = (pt) => { const q = RP(pt); return [c1[0] + q[0], c1[1] + q[1]]; };
+    let v1 = title(4, 8, 'REAR TUBE PLATE — viewed from the rear (outside the tube)');
+    // outline: plate with cut-outs
+    let dd = circPath(T1([0, 0]), d.Rro) + circPath(T1([0, 0]), d.r_open);
+    for (const w of d.windows) {
+      const pts = sectorPolygon(w.r1, w.r2, w.a1, w.a2, 24).map(T1);
+      dd += 'M' + pts.map(q => P(...q)).join('L') + 'Z';
+    }
+    v1 += path(dd, { fill: S.fill, w: 0.45 });
+    v1 += circle(T1([0, 0]), d.Rri, { dash: '2 1', color: S.line });
+    for (const pr of d.pairs) {
+      v1 += circle(T1(pr.push), d.rPB, { w: 0.45 }) + circle(T1(pr.push), d.pb.insHole / 2) + circle(T1(pr.pull), d.pullClear / 2);
+      v1 += circle(T1(pr.pull), d.washerR, { dash: '1 1', color: S.hid });
+    }
+    for (const c of d.fanHoles) v1 += circle(T1(c), d.fanF.insHole / 2);
+    if (d.fan) { const h = d.fan.size / 2, F = (x, y) => T1(rotPt([x, y], d.fanRot)); v1 += path(`M${P(...F(h, h))}L${P(...F(-h, h))}L${P(...F(-h, -h))}L${P(...F(h, -h))}Z`, { dash: '3 1.5', color: S.hid }); }
+    for (const a of d.tubeAngles) { const p0 = T1(pol(d.Rri, a)), p1 = T1(pol(d.Rro, a)); v1 += line(p0, p1, { w: 0.9, color: S.line }); }
+    v1 += circle(T1([0, 0]), d.Rpad, { dash: '6 1.5 1 1.5', color: S.hid });
+    v1 += line(T1([-d.Rro - 4, 0]), T1([d.Rro + 4, 0]), { dash: '6 1.5 1 1.5', color: S.hid, w: 0.2 }) + line(T1([0, -d.Rro - 4]), T1([0, d.Rro + 4]), { dash: '6 1.5 1 1.5', color: S.hid, w: 0.2 });
+    // dimensions
+    v1 += dimLin(T1([d.Rro, 0]), T1([-d.Rro, 0]), -d.Rro - 10, `Ø${f1(2 * d.Rro)} (tube ID ${f1(d.p.tubeID)} − ${d.p.fitClear})`);
+    v1 += dimDia(T1([0, 0]), d.Rri, 235, `Ø${f1(2 * d.Rri)} skirt ID`, d.Rro - d.Rri + 10);
+    v1 += dimDia(T1([0, 0]), d.Rpad, 197, `Ø${f1(2 * d.Rpad)} pair circle`, d.Rro - d.Rpad + 10);
+    v1 += dimDia(T1([0, 0]), d.r_open, 55, `E Ø${f1(2 * d.r_open)} ${d.fan ? 'fan opening' : 'vent'}`, d.Rro - d.r_open + 10);
+    const pr0 = d.pairs[0];
+    v1 += leader(T1(pr0.pull), [T1(pr0.pull)[0] + 18, T1(pr0.pull)[1] + 20], `B Ø${d.pullClear} thru (×3)`);
+    v1 += leader(T1(pr0.push), [T1(pr0.push)[0] + 30, T1(pr0.push)[1] + 12], `A Ø${d.pb.insHole} insert, boss Ø${f1(2 * d.rPB)} (×3)`);
+    // angle between pull and push (drawing frame flips angles: a -> 180 - a... use mapped points)
+    const ang = (pt) => Math.atan2(T1(pt)[1] - c1[1], T1(pt)[0] - c1[0]) * R2D;
+    v1 += arcDim(c1, d.Rpad + 14, ang(pr0.pull), ang(pr0.push), `${f1(d.delta)}°`);
+    v1 += arcDim(c1, d.Rpad + 8, ang(d.pairs[1].pull), ang(d.pairs[2].pull) + (ang(d.pairs[2].pull) < ang(d.pairs[1].pull) ? 360 : 0), '120°');
+    if (d.fan) {
+      const h = d.fan.spacing / 2;
+      v1 += dimLin(T1(rotPt([h, -h], d.fanRot)), T1(rotPt([-h, -h], d.fanRot)), -(d.fan.size / 2 - h) - 6, `D ${d.fan.spacing} sq @ ${round(d.fanRot, 1)}°, Ø${d.fanF.insHole} insert (×4)`);
+    }
+    if (d.windows.length) {
+      const w = d.windows[1] || d.windows[0], am = (w.a1 + w.a2) / 2;
+      v1 += leader(T1(pol((w.r1 + w.r2) / 2, am)), [T1(pol(d.Rro + 8, am))[0], T1(pol(d.Rro + 8, am))[1]], `F R${w.r1}–R${w.r2} × ${f1(w.a2 - w.a1)}° (×${d.windows.length})`);
+    }
+    const ta = d.tubeAngles[d.tubeAngles.length - 1];
+    v1 += leader(T1(pol(d.Rro, ta)), T1(pol(d.Rro + 14, ta)), `C Ø${d.tubeF.insHole} radial (×${d.nTube})`);
+    const H1 = 2 * d.Rro + 50;
+    out.push({ w: W1, h: H1, body: v1 });
+
+    // ---- View 2: mirror plate from the front (mirror side).  Viewer's right = +X.
+    const W2 = 2 * d.R_mpo + 120, H2 = 2 * d.R_mpo + 60;
+    const c2 = [d.R_mpo + 60, d.R_mpo + 30];
+    const T2 = (pt) => [c2[0] + pt[0], c2[1] - pt[1]];
+    let v2 = title(4, 8, 'MIRROR PLATE — viewed from the front (mirror side)');
+    // outline = core circle + arms (drawn as union outline approximated by overlapping fills)
+    let od = circPath(T2([0, 0]), d.R_core) + circPath(T2([0, 0]), d.r_c);
+    for (const v of d.vents) od += circPath(T2(v.c), v.r);
+    v2 += path(od, { fill: S.fill2, w: 0.45 });
+    for (const pr of d.pairs) {
+      const rr = (r1, r2, w1, w2) => {
+        const c = Math.cos(pr.th * D2R), s = Math.sin(pr.th * D2R);
+        return [[r1, -w1 / 2], [r2, -w2 / 2], [r2, w2 / 2], [r1, w1 / 2]].map(([x, y]) => T2([x * c - y * s, x * s + y * c]));
+      };
+      const arm = rr(d.r_root, d.R_mpo, d.wRoot, d.wTip);
+      v2 += path('M' + arm.map(q => P(...q)).join('L') + 'Z', { fill: S.fill2, w: 0.45 });
+      if (d.hRib > 0) { const rib = rr(d.r_root, d.Rm + d.latGap, d.wRib, d.wRib); v2 += path('M' + rib.map(q => P(...q)).join('L') + 'Z', { fill: S.fill2, w: 0.3 }); }
+      const post = rr(d.Rm + d.latGap, d.R_mpo, d.wTip, d.wTip);
+      v2 += path('M' + post.map(q => P(...q)).join('L') + 'Z', { fill: S.fill2, w: 0.6 });
+      v2 += circle(T2(pr.pull), d.padR, { w: 0.5, fill: 'var(--bg, #fff)' });
+      if (!d.clips) v2 += circle(T2(pr.pull), d.cupR, { dash: '1 0.8' });
+      v2 += circle(T2(pr.pull), d.pb.insHole / 2, { dash: '1.5 1', color: S.hid });
+      v2 += circle(T2(pr.push), d.contactR, { dash: '0.8 0.8', color: S.hid });
+      if (d.clips) v2 += circle(T2(pol(d.postC, pr.th)), d.clipF.insHole / 2);
+    }
+    v2 += circle(T2([0, 0]), d.Rm, { dash: '4 2', color: S.hid });
+    v2 += circle(T2([0, 0]), d.Rpad, { dash: '6 1.5 1 1.5', color: S.hid });
+    v2 += dimDia(T2([0, 0]), d.R_core, 182, `Ø${f1(2 * d.R_core)} core`, d.R_mpo - d.R_core + 12);
+    v2 += dimDia(T2([0, 0]), d.Rpad, 162, `Ø${f1(2 * d.Rpad)} pad circle (0.65 D)`, d.R_mpo - d.Rpad + 14);
+    v2 += dimDia(T2([0, 0]), d.Rm, 222, `Ø${f1(d.D)} mirror (ghost)`, d.R_mpo - d.Rm + 12);
+    v2 += dimDia(T2([0, 0]), d.r_c, 318, `I Ø${f1(2 * d.r_c)} central vent`, d.R_mpo - d.r_c + 12);
+    const pp = d.pairs[0];
+    v2 += leader(T2(pp.pull), [T2(pp.pull)[0] + 16, c2[1] - d.R_mpo - 6],
+      `pad Ø${f1(2 * d.padR)}; G Ø${d.pb.insHole}×${f1(d.holeDepth)} from rear` + (d.clips ? '' : `; H cup Ø${f1(2 * d.cupR)}×${d.cupD}`));
+    v2 += leader(T2(pp.push), [T2(pp.push)[0] - 26, c2[1] - d.R_mpo + 4], 'push-bolt contact');
+    const tipPt = pol(d.R_mpo, pp.th);
+    v2 += dimLin(T2(pol(d.R_mpo, pp.th - 90).map((v, i) => v * (d.wTip / 2) / d.R_mpo + tipPt[i])), T2(pol(d.R_mpo, pp.th + 90).map((v, i) => v * (d.wTip / 2) / d.R_mpo + tipPt[i])), 5, `${d.wTip}`);
+    v2 += leader(T2(pol(d.postC, d.pairs[2].th)), [T2(pol(d.postC, d.pairs[2].th))[0] + 14, T2(pol(d.postC, d.pairs[2].th))[1] + 14],
+      d.clips ? `post ${d.postD}×${d.wTip}, H Ø${d.clipF.insHole}×${d.clipHoleDepth} (×3)` : `lateral stop ${d.postD}×${d.wTip} (×3)`);
+    v2 += text(T2(pol(d.R_mpo, d.pairs[1].th))[0] - 2, T2(pol(d.R_mpo, d.pairs[1].th))[1] + 14, `arm ${f1(d.wRoot)} → ${d.wTip} wide${d.hRib ? `, rib ${d.wRib}×${d.hRib} tall` : ''}`, { anchor: 'end' });
+    v2 += text(c2[0], c2[1] + d.R_mpo + 18, `mirror-to-post gap ${d.latGap} mm radial; posts at R${f1(d.Rm + d.latGap)}–R${f1(d.R_mpo)}`, { color: S.line });
+    if (d.vents.length) v2 += leader(T2(d.vents[2 % d.vents.length].c), [c2[0] + d.R_core + 6, T2(d.vents[2 % d.vents.length].c)[1] + 4], `J Ø${f1(2 * d.vents[0].r)} (×${d.vents.length}) @ R${f1(d.vents[0].rv)}`);
+    out.push({ w: W2, h: H2, body: v2 });
+
+    // ---- View 3: section through pair 1 (the Y–Z plane).  Horizontal = Y, up = +Z.
+    const zT = d.zTop + 4, W3 = 2 * (d.Rt + d.p.tubeWall) + 130, H3 = zT + 36;
+    const c3 = [W3 / 2, H3 - 12];
+    const T3 = (y, z) => [c3[0] + y, c3[1] - z];
+    const rect = (y0, y1, z0, z1, o) => path(`M${P(...T3(y0, z0))}L${P(...T3(y1, z0))}L${P(...T3(y1, z1))}L${P(...T3(y0, z1))}Z`, o);
+    let v3 = title(4, 8, 'SECTION A–A through push-pull pair 1 (push bolt projected)');
+    // tube wall
+    v3 += rect(d.Rt, d.Rt + d.p.tubeWall, -2, zT - 2, { dash: '3 1.5', color: S.hid, fill: 'none' });
+    v3 += rect(-d.Rt - d.p.tubeWall, -d.Rt, -2, zT - 2, { dash: '3 1.5', color: S.hid, fill: 'none' });
+    // rear plate (section)
+    for (const sgn of [1, -1]) v3 += rect(sgn * d.Rri, sgn * d.Rro, 0, d.H_s, { fill: S.fill, w: 0.45 });
+    v3 += rect(-d.Rro, d.Rro, d.z_rr, d.z_rf, { fill: S.fill, w: 0.45 });
+    const pushY = d.pairs[0].push[1];
+    v3 += rect(pushY - d.rPB, pushY + d.rPB, d.H_s - d.h_pb, d.z_rr, { fill: S.fill, w: 0.45, dash: '2 1' });
+    // mirror plate
+    v3 += rect(-d.R_core, d.R_core, d.z_mb, d.z_mf, { fill: S.fill2, w: 0.45 });
+    v3 += rect(d.Rm + d.latGap, d.R_mpo, d.z_mb, d.z_post, { fill: S.fill2, w: 0.45 });
+    v3 += rect(d.r_root, d.R_mpo, d.z_mb, d.z_mf, { fill: S.fill2, w: 0.45 });
+    if (d.hRib > 0) v3 += rect(d.r_root, d.Rm + d.latGap, d.z_mf, d.z_mf + d.hRib, { fill: S.fill2, w: 0.45 });
+    v3 += rect(d.Rpad - d.padR, d.Rpad + d.padR, d.z_mb, d.z_pad, { fill: S.fill2, w: 0.45 });
+    v3 += rect(d.Rpad - d.pb.insHole / 2, d.Rpad + d.pb.insHole / 2, d.z_mb, d.z_mb + d.holeDepth, { fill: 'var(--bg, #fff)', w: 0.3 });
+    // mirror ghost
+    v3 += rect(-d.Rm, d.Rm, d.z_pad, d.z_mirF, { fill: S.ghost, dash: '4 2', color: S.hid });
+    if (d.clips) v3 += rect(d.clip.r1, d.clip.r2, d.z_post, d.z_post + d.clip.t, { fill: 'rgba(90,158,111,0.25)', w: 0.45 });
+    // bolts (centre lines)
+    v3 += line(T3(d.Rpad, d.z_rr - d.pb.washerT - d.pb.major - 2), T3(d.Rpad, d.z_rr - d.pb.washerT + d.Lpull), { dash: '4 1 1 1', color: S.hid, w: 0.25 });
+    v3 += line(T3(pushY, d.z_mb - d.Lpush - d.pb.major - 2), T3(pushY, d.z_mb + 2), { dash: '4 1 1 1', color: S.hid, w: 0.25 });
+    // dimensions on the left
+    const xL = -d.Rt - d.p.tubeWall - 6;
+    const vdim = (z0, z1, off, label, y = xL) => dimLin(T3(y, z0), T3(y, z1), off, label);
+    v3 += vdim(0, d.H_s, 6, `${f1(d.H_s)}`);
+    v3 += vdim(d.z_rr, d.z_rf, 0.1, `${d.t_r}`, -d.Rro + 8);
+    v3 += vdim(d.z_rf, d.z_mb, 16, `${f1(d.g)}`);
+    v3 += vdim(d.z_mb, d.z_mf, 0.1, `${d.t_m}`, -d.R_core + 8);
+    v3 += vdim(d.z_mb, d.z_pad, 6, `${f1(d.H_col)}`);
+    v3 += vdim(d.z_pad, d.z_mirF, 16, `mirror ${f1(d.tMir)}`);
+    v3 += vdim(0, d.zTop, 27, `overall ${f1(d.zTop)}`);
+    // right side dims
+    const xR = d.Rt + d.p.tubeWall + 6;
+    v3 += dimLin(T3(xR, d.z_mb), T3(xR, d.z_post), -8, `post ${f1(d.z_post - d.z_mb)}`);
+    v3 += dimLin(T3(xR, 0), T3(xR, d.z_tube), -18, `${f1(d.z_tube)}`);
+    v3 += dimLin(T3(pushY - d.rPB, d.H_s - d.h_pb - 3), T3(pushY + d.rPB, d.H_s - d.h_pb - 3), 0.1, `boss ${f1(d.h_pb)} tall`);
+    if (d.clips) v3 += leader(T3(d.Rm - 1, d.z_post + d.clip.t / 2), T3(d.Rm - 20, d.zTop + 3), `clip ${d.clip.t} thick, ${f1(d.z_post - d.z_mirF)} above mirror`);
+    else v3 += leader(T3(d.Rpad, d.z_pad - d.cupD / 2), T3(d.Rpad - 30, d.z_pad + d.tMir + 3), `RTV ${d.cupD} mm in pad cup`);
+    v3 += leader(T3(d.Rpad, d.z_mb + d.holeDepth / 2), T3(d.Rpad + 26, d.z_mb - 4), `pull ${d.pbKey}×${fmtIn(d.pullLenIn)}`);
+    v3 += leader(T3(pushY, d.z_rf + 2), T3(pushY - 36, d.z_rf + d.g / 2 + 1), `push ${d.pbKey}×${fmtIn(d.pushLenIn)} + jam nut`);
+    v3 += text(c3[0], H3 - 2, 'z = 0 at the rear end of the tube; rear-plate skirt is flush with the tube end', { color: S.line });
+    out.push({ w: W3, h: H3, body: v3 });
+
+    // ---- View 4: clip (if any)
+    if (d.clips) {
+      const c = d.clip, L = c.r2 - c.r1, W4 = L + 90, H4 = 66;
+      const o = [20, 20];
+      let v4 = title(4, 8, 'CLIP (×3) — top and side');
+      v4 += path(`M${P(o[0], o[1])}h${f1(L)}v${f1(c.w)}h${f1(-L)}Z`, { fill: 'rgba(90,158,111,0.2)', w: 0.45 });
+      v4 += circle([o[0] + c.holeR - c.r1, o[1] + c.w / 2], d.clipF.clear / 2);
+      v4 += dimLin([o[0], o[1]], [o[0] + L, o[1]], -5, `${f1(L)}`);
+      v4 += dimLin([o[0] + L, o[1]], [o[0] + L, o[1] + c.w], -5, `${c.w}`);
+      v4 += dimLin([o[0], o[1] + c.w], [o[0] + c.holeR - c.r1, o[1] + c.w], -5, `${f1(c.holeR - c.r1)}`);
+      v4 += leader([o[0] + c.holeR - c.r1, o[1] + c.w / 2], [o[0] + L + 12, o[1] + c.w + 8], `K Ø${d.clipF.clear} thru`);
+      v4 += path(`M${P(o[0], o[1] + c.w + 10)}h${f1(L)}v${f1(c.t)}h${f1(-L)}Z`, { fill: 'rgba(90,158,111,0.2)', w: 0.45 });
+      v4 += dimLin([o[0], o[1] + c.w + 10 + c.t], [o[0], o[1] + c.w + 10], 5, `${c.t}`);
+      v4 += text(o[0], H4 - 3, `inner (left) end overlaps the mirror face by ${RULES.clipOverlap} mm`, { anchor: 'start', color: S.line });
+      out.push({ w: W4, h: H4, body: v4 });
+    }
+
+    // stack the views vertically
+    const Wmax = Math.max(...out.map(v => v.w));
+    let y = 0, bodyAll = '';
+    for (const v of out) { bodyAll += `<g transform="translate(${f1((Wmax - v.w) / 2)},${f1(y)})">${v.body}</g>`; y += v.h + 8; }
+    const hdr = `${d.preset.label} mirror, ${f1(d.p.tubeID)} mm (${round(d.p.tubeID / IN, 3)}") tube ID, ${d.clips ? 'clips' : 'RTV'}${d.fan ? `, ${d.fan.size} mm fan` : ''} — all dimensions in mm`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -12 ${f1(Wmax)} ${f1(y + 12)}" font-family="ui-sans-serif, system-ui, sans-serif">` +
+      `<defs><marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,2 L10,5 L0,8 z" fill="${S.dim}"/></marker></defs>` +
+      text(4, -4, hdr, { anchor: 'start', color: S.line, size: 3.6 }) + bodyAll + `</svg>`;
+  }
+
+  function report(d, extra = {}) {
+    const L = [];
+    L.push(`# Mirror cell: ${d.preset.label} mirror in ${round(d.p.tubeID, 1)} mm (${round(d.p.tubeID / IN, 3)}") ID tube`);
+    L.push('');
+    L.push(`Retention: **${d.clips ? 'clips' : 'RTV'}** · Fan: **${d.fan ? d.fan.size + ' mm' : 'none'}** · Push-pull: **3 × ${d.pbKey} pairs** · Bed: ${d.p.bed} mm`);
+    L.push('');
+    L.push('## Key dimensions (mm)');
+    L.push('| Group | Dimension | Value |'); L.push('|---|---|---|');
+    for (const k of keyDims(d)) L.push(`| ${k.group} | ${k.name} | ${k.v} |`);
+    L.push('');
+    L.push('## Hole schedule');
+    L.push('| Part | Label | Qty | Feature | Size | Location | Install |'); L.push('|---|---|---|---|---|---|---|');
+    for (const h of d.holes) L.push(`| ${h.part} | ${h.label} | ${h.qty} | ${h.desc} | ${h.size} | ${h.loc} | ${h.install} |`);
+    L.push('');
+    L.push('## Bill of materials (per cell)');
+    L.push('| Ref | Category | Qty | Description | Size / spec | Length | Used in | Notes |'); L.push('|---|---|---|---|---|---|---|---|');
+    for (const b of makeBOM(d, extra)) L.push(`| ${b.ref} | ${b.category} | ${b.qty} | ${b.description} | ${b.spec} | ${b.length} | ${b.usedIn} | ${b.note} |`);
+    L.push('');
+    L.push('## Checks');
+    L.push('| Part | Check | Value (mm) | Required | Result |'); L.push('|---|---|---|---|---|');
+    for (const c of d.checks) L.push(`| ${c.part} | ${c.item} | ${c.value} | ${c.req} | ${c.pass ? 'PASS' : '**FAIL**'} |`);
+    L.push('');
+    L.push('## Strength (hand calculations, sustained allowables for printed PETG/ASA)');
+    L.push('| Load case | Item | Value | Allowable | Utilisation | Result |'); L.push('|---|---|---|---|---|---|');
+    for (const c of d.strength) L.push(`| ${c.case} | ${c.item} | ${c.value} ${c.unit} | ${c.allow} ${c.unit} | ${Math.round(c.util * 100)}% | ${c.pass ? 'PASS' : '**FAIL**'} |`);
+    if (extra.interference) {
+      L.push('');
+      L.push('## Interference (CAD boolean intersection of every pair of bodies)');
+      L.push('| Body A | Body B | Overlap volume (mm³) | Result |'); L.push('|---|---|---|---|');
+      for (const r of extra.interference) L.push(`| ${r.a} | ${r.b} | ${r.volume} | ${r.pass ? 'PASS' : '**FAIL**'} |`);
+    }
+    if (extra.fits) {
+      L.push('');
+      L.push(`## Print bed fit (${d.p.bed} × ${d.p.bed} mm)`);
+      L.push('| Part | Footprint (mm) | Height (mm) | Fits |'); L.push('|---|---|---|---|');
+      for (const f of extra.fits) L.push(`| ${f.name} | ${round(f.fit.w, 1)} × ${round(f.fit.h, 1)} | ${round(f.fit.height, 1)} | ${f.fit.fits ? 'yes' : '**NO – see oversize policy**'} |`);
+    }
+    L.push('');
+    L.push(`## Print settings (embedded in the 3MF)`);
+    L.push(`${PRINT.walls} walls/perimeters, ${PRINT.infill}% ${PRINT.pattern} infill, ${PRINT.top} top and ${PRINT.bottom} bottom layers, ${PRINT.layer} mm layers, no supports. Material: ${PRINT.material}.`);
+    if (d.notes.length || d.warnings.length) { L.push(''); L.push('## Notes'); for (const n of [...d.warnings, ...d.notes]) L.push(`- ${n}`); }
+    return L.join('\n') + '\n';
+  }
+
+  const api = {
+    IN, FASTENERS, FANS, MIRRORS, RULES, PRINT, STRENGTH, STD_LEN_IN,
+    defaultParams, computeDesign, keyDims, buildCAD, buildHardware, buildFan, buildTube, interference,
+    weldMesh, meshShape, bedFit, make3MF, drawSheet, report, makeBOM, bomCSV, describeConfig, fmtIn, round,
+  };
+  return api;
+})();
+if (typeof globalThis !== 'undefined') globalThis.MirrorCellCore = MirrorCellCore;
+// CORE-END
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const Core = globalThis.MirrorCellCore;
+const { IN, round, fmtIn } = Core;
+const CDN = {
+  replicad: 'https://cdn.jsdelivr.net/npm/replicad@1.1.0/dist/replicad.js',
+  oc: 'https://cdn.jsdelivr.net/npm/replicad-opencascadejs@1.1.0/dist/replicad_single.js',
+  ocWasm: 'https://cdn.jsdelivr.net/npm/replicad-opencascadejs@1.1.0/dist/replicad_single.wasm',
+  fflate: 'https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js',
+};
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let R = null, zipSync = null;
+const state = {
+  params: Core.defaultParams('6'),
+  unit: 'in',
+  design: null, cad: null, fits: null, interference: null, error: null,
+  view: 'asm',
+};
+
+// ---------------------------------------------------------------- persistence
+function loadSaved() {
+  try {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (h.startsWith('{')) { const o = JSON.parse(h); Object.assign(state.params, o.p || {}); if (o.u) state.unit = o.u; return; }
+  } catch { /* ignore */ }
+  try {
+    const s = localStorage.getItem('mirror-cell-designer');
+    if (s) { const o = JSON.parse(s); Object.assign(state.params, o.p || {}); if (o.u) state.unit = o.u; }
+  } catch { /* ignore */ }
+}
+function save() {
+  const o = JSON.stringify({ p: state.params, u: state.unit });
+  try { localStorage.setItem('mirror-cell-designer', o); } catch { /* ignore */ }
+  try { history.replaceState(null, '', '#' + encodeURIComponent(o)); } catch { /* file:// may refuse */ }
+}
+
+// ---------------------------------------------------------------- form
+const LEN_FIELDS = ['mirrorThick', 'tubeID', 'tubeWall'];
+const MM_FIELDS = ['bed', 'fitClear', 'gapNominal', 'adj', 'lateralGap', 'clipGap', 'preload'];
+
+function toUnit(v) { return state.unit === 'in' ? round(v / IN, 4) : round(v, 2); }
+function fromUnit(v) { return state.unit === 'in' ? v * IN : v; }
+
+function fillForm() {
+  const p = state.params;
+  $$('#presetSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.preset === p.mirror));
+  $$('#retSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.ret === p.retention));
+  $$('#unitSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.unit === state.unit));
+  $$('#viewSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === state.view));
+  for (const k of LEN_FIELDS) { $('#' + k).value = toUnit(p[k]); $('#' + k).step = state.unit === 'in' ? '0.01' : '0.1'; }
+  for (const k of MM_FIELDS) $('#' + k).value = p[k];
+  renderFanOptions();
+  $('#thickHint').textContent = `preset default ${round(Core.MIRRORS[p.mirror].thick, 1)} mm`;
+}
+
+function renderFanOptions() {
+  const p = state.params;
+  const def = Core.MIRRORS[p.mirror].fan;
+  const tooBig = (s) => { try { return s && Core.computeDesign({ ...p, fan: s }).errors.some(e => /fan/.test(e) && !/^Check/.test(e)); } catch { return false; } };
+  $('#fan').innerHTML = [0, 40, 60, 80, 92, 120].map(s => {
+    const big = tooBig(s) && +p.fan !== s;
+    return `<option value="${s}" ${+p.fan === s ? 'selected' : ''} ${big ? 'disabled' : ''}>${s ? `${s} mm${s === def ? ' (std)' : ''}${big ? ' – too large' : ''}` : 'None'}</option>`;
+  }).join('');
+}
+
+function bindForm() {
+  $('#presetSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const keep = { retention: state.params.retention, bed: state.params.bed };
+    state.params = { ...Core.defaultParams(b.dataset.preset), ...keep };
+    fillForm(); changed();
+  });
+  $('#retSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.params.retention = b.dataset.ret; fillForm(); changed();
+  });
+  $('#unitSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.unit = b.dataset.unit; fillForm(); save();
+  });
+  for (const k of LEN_FIELDS) $('#' + k).addEventListener('input', e => {
+    const v = parseFloat(e.target.value); if (!(v > 0)) return;
+    state.params[k] = fromUnit(v); changed();
+  });
+  for (const k of MM_FIELDS) $('#' + k).addEventListener('input', e => {
+    const v = parseFloat(e.target.value); if (!(v >= 0)) return;
+    state.params[k] = v; changed();
+  });
+  $('#fan').addEventListener('change', e => { state.params.fan = +e.target.value; changed(); });
+  $('#resetBtn').addEventListener('click', () => {
+    state.params = { ...Core.defaultParams(state.params.mirror), retention: state.params.retention };
+    fillForm(); changed();
+  });
+  $$('.tabs button').forEach(b => b.addEventListener('click', () => {
+    $$('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+    $$('.tab').forEach(t => t.classList.toggle('active', t.id === b.dataset.tab));
+    if (b.dataset.tab === 't3d') resize();
+  }));
+  $('#viewSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.view = b.dataset.view; fillForm(); showScene(true);
+  });
+  $('#optHw').addEventListener('change', () => showScene(false));
+  $('#optTube').addEventListener('change', () => showScene(false));
+  $('#optSection').addEventListener('change', () => showScene(false));
+  $('#optExplode').addEventListener('input', () => applyExplode());
+  $('#fitBtn').addEventListener('click', () => fitCamera());
+  for (const el of [$('#exports'), $('#bom')]) el.addEventListener('click', e => { const b = e.target.closest('button[data-exp]'); if (b) doExport(b.dataset.exp, b.dataset.part); });
+  $('#themeBtn').addEventListener('click', () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.dataset.theme = cur === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('mirror-cell-theme', document.documentElement.dataset.theme); } catch { /* ignore */ }
+    themeScene();
+  });
+}
+
+// ---------------------------------------------------------------- status
+function setStatus(msg, busy = false) { const s = $('#status'); s.textContent = msg; s.classList.toggle('busy', busy); }
+const nextFrame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
+// ---------------------------------------------------------------- update pipeline
+let timer = 0, token = 0;
+function changed() { save(); clearTimeout(timer); timer = setTimeout(update, 250); }
+
+async function update() {
+  const my = ++token;
+  let d;
+  try { d = Core.computeDesign(state.params); }
+  catch (e) { state.error = e.message; renderSummary(); return; }
+  state.design = d; state.error = null; state.interference = null; state.fits = null;
+  renderFanOptions();
+  renderSheet(); renderTables(); renderSummary(); renderBanner();
+  if (!R) return;
+  if (d.errors.some(e => !e.startsWith('Check failed'))) { setStatus('Fix the input problems listed above to rebuild the solids.'); return; }
+  setStatus('Building solids…', true);
+  await nextFrame(); if (my !== token) return;
+  let cad;
+  try { cad = Core.buildCAD(R, d); }
+  catch (e) { console.error(e); state.error = 'CAD build failed: ' + (e.message || e); setStatus(state.error); renderSummary(); return; }
+  disposeCad(state.cad);
+  state.cad = cad;
+  state.fits = cad.parts.map(p => {
+    const m = Core.meshShape(p.print);
+    return { id: p.id, name: p.name, count: p.count, mesh: m, fit: Core.bedFit(m.vertices, d.p.bed), volume: R.measureVolume(p.print) };
+  });
+  buildScene();
+  renderPartExports(); renderSummary(); renderBanner(); renderTables();
+  setStatus('Checking interference…', true);
+  await nextFrame(); if (my !== token) return;
+  try { state.interference = Core.interference(R, d, cad); }
+  catch (e) { console.error(e); state.interference = [{ a: 'interference check', b: 'error', volume: NaN, pass: false }]; }
+  renderSummary(); renderTables();
+  const nFail = d.checks.filter(c => !c.pass).length + state.interference.filter(r => !r.pass).length;
+  setStatus(nFail ? `${nFail} check(s) failing — see the Checks tab` : `Ready — ${d.preset.label} mirror, ${round(d.p.tubeID / IN, 3)}" ID tube`);
+}
+
+function disposeCad(cad) {
+  if (!cad) return;
+  const del = (s) => { try { s && s.delete && s.delete(); } catch { /* already gone */ } };
+  for (const p of cad.parts) { p.asm.forEach(del); del(p.print); }
+  cad.hardware.forEach(h => del(h.shape)); del(cad.mirror);
+  if (cad.tube) del(cad.tube);
+  if (cad.fan) del(cad.fan);
+}
+
+// ---------------------------------------------------------------- summary / banner
+function oversize() { return (state.fits || []).filter(f => !f.fit.fits); }
+
+function renderSummary() {
+  const d = state.design, ul = $('#summary');
+  const items = [];
+  if (state.error) items.push(['err', `<b>Error:</b> ${esc(state.error)}`]);
+  if (d) {
+    const fails = d.checks.filter(c => !c.pass);
+    items.push(fails.length ? ['err', `<b>${fails.length} of ${d.checks.length} design checks fail.</b> See Checks.`] : ['ok', `<b>All ${d.checks.length} design checks pass</b> (walls ≥ ${Core.RULES.wallMin} mm, bolts, travel, clearances)`]);
+    const sf = d.strength.filter(c => !c.pass);
+    items.push(sf.length ? ['err', `<b>${sf.length} strength check(s) fail.</b> See Checks.`] : ['ok', `<b>All ${d.strength.length} strength checks pass</b> (hand calculations, max ${Math.round(Math.max(...d.strength.map(c => c.util)) * 100)}% of allowable)`]);
+    if (state.interference) {
+      const bad = state.interference.filter(r => !r.pass);
+      items.push(bad.length ? ['err', `<b>Interference:</b> ${bad.map(r => esc(r.a + ' × ' + r.b)).join('; ')}`] : ['ok', `<b>No interference</b> between ${state.interference.length} body pairs (CAD check)`]);
+    } else if (R) items.push(['info', 'Interference check pending…']);
+    for (const f of oversize()) items.push(['warn', `<b>${esc(f.name)} is ${round(f.fit.w, 0)} × ${round(f.fit.h, 0)} mm</b> — larger than the ${d.p.bed} × ${d.p.bed} mm bed.`]);
+    if (state.fits && !oversize().length) items.push(['ok', `<b>All parts fit</b> a ${d.p.bed} × ${d.p.bed} mm bed`]);
+  }
+  if (!R) items.push(['info', 'CAD kernel loading: previews and exports enable when ready. The drawing and checks already work.']);
+  ul.innerHTML = items.map(([k, h]) => `<li class="pill ${k}">${h}</li>`).join('');
+}
+
+function renderBanner() {
+  const d = state.design, el = $('#banner');
+  const parts = [];
+  if (d && d.errors.length) parts.push(`<div class="pill err"><div><b>This configuration has problems:</b><ul style="margin:4px 0 0 18px;padding:0">${d.errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div></div>`);
+  const os = oversize();
+  if (os.length) {
+    const need = Math.ceil(Math.max(...os.map(f => Math.max(f.fit.w, f.fit.h))));
+    parts.push(`<div class="pill warn"><div><b>Oversize for a ${d.p.bed} × ${d.p.bed} mm bed:</b> ${os.map(f => `${esc(f.name)} (${round(f.fit.w, 0)} × ${round(f.fit.h, 0)} mm)`).join(', ')}.<br>
+      <b>Policy:</b> the app never splits or shrinks a part — every part is exported whole and full size, because a seam through a collimation plate costs stiffness and flatness.
+      Print it on a bed of at least <b>${need} × ${need} mm</b> (set the bed size above to clear this warning), or cut it yourself with your slicer's <i>Cut</i> tool and dowel connectors.
+      Cut through the vent windows, away from the push-pull bosses, and glue or bolt the pieces back together.</div></div>`);
+  }
+  el.innerHTML = parts.join('');
+}
+
+// ---------------------------------------------------------------- 2D sheet & tables
+function renderSheet() { $('#sheet').innerHTML = Core.drawSheet(state.design); }
+
+function renderTables() {
+  const d = state.design; if (!d) return;
+  const row = (cells) => `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
+  let h = '<h2>Design checks</h2><div class="tablewrap"><table><thead><tr><th>Part</th><th>Check</th><th>Value (mm)</th><th>Required</th><th>Result</th></tr></thead><tbody>';
+  h += d.checks.map(c => row([esc(c.part), esc(c.item), `<span class="num">${c.value}</span>`, esc(c.req), c.pass ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>'])).join('');
+  h += '</tbody></table></div>';
+  h += '<h2>Strength (hand calculations)</h2><div class="tablewrap"><table><thead><tr><th>Load case</th><th>Item</th><th>Value</th><th>Allowable</th><th>Use</th><th>Result</th></tr></thead><tbody>';
+  let lastCase = '';
+  h += d.strength.map(c => { const lc = c.case === lastCase ? '' : esc(c.case); lastCase = c.case;
+    return row([lc, `${esc(c.item)}<br><small class="muted">${esc(c.basis)}</small>`, `<span class="num">${c.value} ${c.unit}</span>`, `<span class="num">${c.allow} ${c.unit}</span>`,
+      `<span class="num">${Math.round(c.util * 100)}%</span>`, c.pass ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>']); }).join('');
+  const SS = Core.STRENGTH;
+  h += `</tbody></table></div><p class="muted">Simple beam and plate formulas, not FEA: good for catching parts that are badly undersized, not for proving a margin. Assumptions: glass ${SS.glassDensity} g/cm³; gravity loads × ${SS.handling} for handling; sustained allowables for printed PETG/ASA of ${SS.sigmaXY} MPa along the layers, ${SS.sigmaZ} MPa across them, ${SS.sigmaBear} MPa bearing and ${SS.tauRTV} MPa for RTV, with section efficiency ${SS.eta} for walls, skins and infill; heat-set insert pull-out ${Object.entries(SS.insertPullout).map(([k, v]) => `${k} ${v} N`).join(', ')}. The rear-plate and mirror-plate thickness, the lateral post depth, the arm ribs and (RTV) the pad size are sized from these checks. Edit <code>STRENGTH</code> in the HTML if you have better material data.</p>`;
+  h += '<h2>Interference (CAD boolean intersection of every pair of bodies)</h2>';
+  if (state.interference) {
+    h += '<div class="tablewrap"><table><thead><tr><th>Body A</th><th>Body B</th><th>Overlap (mm³)</th><th>Result</th></tr></thead><tbody>';
+    h += state.interference.map(r => row([esc(r.a), esc(r.b), `<span class="num">${r.volume}</span>`, r.pass ? '<span class="pass">PASS</span>' : '<span class="fail">FAIL</span>'])).join('');
+    h += '</tbody></table></div><p class="muted">Bodies checked: every printed part, the mirror, the tube (with screw holes), the fan, and all bolts, nuts and washers at their installed positions. Touching faces (mirror on pads, washers on the plate) count as zero overlap. Heat-set inserts are left out on purpose: they are meant to melt into their holes.</p>';
+  } else h += `<p class="muted">${R ? 'Running…' : 'Waiting for the CAD kernel.'}</p>`;
+  h += `<h2>Print bed fit (${d.p.bed} × ${d.p.bed} mm)</h2>`;
+  if (state.fits) {
+    h += '<div class="tablewrap"><table><thead><tr><th>Part</th><th>Qty</th><th>Footprint (best rotation)</th><th>Height</th><th>Fits</th></tr></thead><tbody>';
+    h += state.fits.map(f => row([esc(f.name), f.count, `<span class="num">${round(f.fit.w, 1)} × ${round(f.fit.h, 1)} mm @ ${f.fit.angle}°</span>`, `<span class="num">${round(f.fit.height, 1)} mm</span>`, f.fit.fits ? '<span class="pass">yes</span>' : '<span class="fail">no</span>'])).join('');
+    h += '</tbody></table></div>';
+  } else h += '<p class="muted">Computed after the solids are built.</p>';
+  $('#checks').innerHTML = h;
+
+  let b = '<h2>Key dimensions</h2><div class="tablewrap"><table><thead><tr><th>Group</th><th>Dimension</th><th>Value</th></tr></thead><tbody>';
+  b += Core.keyDims(d).map(k => row([esc(k.group), esc(k.name), `<span class="num">${esc(k.v)}</span>`])).join('');
+  b += '</tbody></table></div><h2>Hole schedule</h2><div class="tablewrap"><table><thead><tr><th>Part</th><th></th><th>Qty</th><th>Feature</th><th>Size (mm)</th><th>Location (mm, deg)</th><th>Install</th></tr></thead><tbody>';
+  b += d.holes.map(x => row([esc(x.part), `<b>${x.label}</b>`, x.qty, esc(x.desc), esc(x.size), esc(x.loc), esc(x.install)])).join('');
+  b += '</tbody></table></div><p class="muted">Angles are measured counter-clockwise from +X when viewed from the front (mirror side). Pair 1 is at 90°. Radii are measured from the tube axis.</p>';
+  b += `<h2>Bill of materials (per cell) <button class="btn" data-exp="csv" style="margin-left:8px;font-size:12.5px">Download CSV</button></h2>`;
+  b += `<p class="muted">${esc(Core.describeConfig(d))}. Identical items are merged into one line.${state.fits ? '' : ' Part volumes and footprints are added once the solids are built.'}</p>`;
+  b += '<div class="tablewrap"><table><thead><tr><th>Ref</th><th>Category</th><th>Qty</th><th>Description</th><th>Size / spec</th><th>Length</th><th>Used in</th><th>Notes</th></tr></thead><tbody>';
+  b += Core.makeBOM(d, { fits: state.fits }).map(x => row([`<b>${x.ref}</b>`, esc(x.category), x.qty, esc(x.description), esc(x.spec), esc(x.length), esc(x.usedIn), esc(x.note)])).join('');
+  b += '</tbody></table></div>';
+  if (d.notes.length) b += `<h2>Notes</h2><ul>${d.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>`;
+  $('#bom').innerHTML = b;
+}
+
+function renderDecisions() {
+  const P = Core.PRINT, RU = Core.RULES;
+  $('#decisions').innerHTML = `
+  <h2>Stated decisions</h2>
+  <ul>
+    <li><b>CAD kernel: replicad</b> (OpenCascade compiled to WebAssembly), loaded from jsDelivr. It is a real B-rep kernel, so it can write true <b>STEP</b>. JSCAD is mesh-only CSG and cannot export STEP. 3MF files are written from the kernel's triangulation, with a small built-in 3MF writer and <code>fflate</code> for the zip.</li>
+    <li><b>3MF print defaults:</b> ${P.walls} walls (perimeters), ${P.infill}% ${P.pattern} infill, ${P.top} top and ${P.bottom} bottom layers, ${P.layer} mm layers, supports off. Five walls at 0.4 mm make the ≥ 2 mm material around every heat-set insert solid perimeter, not infill. These are written as per-object settings that PrusaSlicer reads (<code>Metadata/Slic3r_PE_model.config</code>). Equivalent OrcaSlicer/Bambu keys are included on a best-effort basis (<code>Metadata/model_settings.config</code>). The same values appear in the file description, so you can enter them by hand in any slicer.</li>
+    <li><b>Oversize parts:</b> any part whose footprint, at its best rotation, exceeds the bed (default 220 × 220 mm) is flagged in a warning that gives the bed size needed. The part is <b>exported whole and full size, never split or scaled</b>. You can print it on a larger bed or cut it in your slicer. A 10" ID tube needs a 254 mm bed for the rear plate. A 10" mirror's mirror plate needs about 240 mm.</li>
+    <li><b>Print orientation, no supports:</b> the rear plate prints front-face-down, so the skirt and push bosses grow upward. The radial tube-screw holes are teardrops pointing up. The mirror plate prints rear-face-down, with pads and posts growing upward. The blind insert holes open onto the bed, and their small (&lt; 8 mm) roofs bridge. Clips print flat.</li>
+    <li><b>Push-pull:</b> 3 pairs at 120°, on a circle of 0.65 × mirror diameter (close to the optimum for 3-point support). Each pull bolt passes through a clearance hole in the rear plate and threads into a heat-set insert inside the pad column that the mirror rests on. The push bolt threads through a heat-set insert in a boss on the rear plate, bears on the mirror plate's back, and is locked with a jam nut. Bolts are #10-24 for 4.25" and 6" mirrors and 1/4-20 for 8" and 10" mirrors. Default travel at each pair is sized so the worst case (one pair fully out, two fully in) tilts the mirror about 2.5°: ±1 mm for 4.25", ±1.5 mm for 6", ±2 mm for 8" and ±2.5 mm for 10". That is several times what collimation needs, and it is adjustable under Advanced. The plate gap is set so a standard-length pull bolt fully engages its insert at maximum gap and never bottoms at minimum gap. All 8 extreme poses (each pair at +travel or −travel) are checked for clearance to the tube wall and the rear plate, both analytically and with a CAD intersection. The pull-bolt clearance holes are enlarged automatically if the travel you choose would make the bolts bind as they tilt.</li>
+    <li><b>Strength:</b> plate thicknesses, lateral-post depth, arm ribs and (RTV) pad size are sized by hand calculations for three load cases: tube horizontal, tube vertical with the locked push-pull preload, and tube pointing down. They are checked against sustained allowables for printed PETG/ASA. The results are in the Strength table on the Checks tab. Lock the pairs finger-snug (Advanced › push-pull lock preload, default 100 N per bolt); the BOM gives the torque.</li>
+    <li><b>Walls:</b> the generator aims for ${RU.wallDesign} mm around inserts, measured from the insert's outside diameter. Every insert and through-hole is checked for ≥ ${RU.wallMin} mm to the nearest hole, cut-out or edge. Blind holes keep ≥ ${RU.capMin} mm of cap.</li>
+    <li><b>Retention:</b> <i>RTV</i> — each pad has a ${RU.rtvCupDepth} mm-deep cup that sets the silicone thickness, and 3 lateral stops sit at the mirror edge. <i>Clips</i> — the mirror rests on flat pads, and 3 posts carry ${RU.clipThick} mm clips that overlap the face by ${RU.clipOverlap} mm, with a small gap so they never pinch the glass.</li>
+    <li><b>Fillets:</b> rear plate — ${RU.filletSkirt} mm where the plate meets the skirt, ${RU.filletBoss} mm at the root of each push boss, and ${RU.filletWindow} mm vent-window corners. Mirror plate — ${RU.filletPad} mm around each pad column, up to ${RU.filletPost} mm along the inner face of each lateral post (kept ≥ 2 mm below the mirror), and ${RU.filletRib} mm along the arm ribs. All are inside corners that face up when printed, so they need no supports. The fan is automatically rotated to the angle that best clears the bolts.</li>
+    <li><b>Tube attachment:</b> the rear plate is a slip fit in the tube, and its skirt is flush with the tube end. #8-32 screws go through the tube wall into radial heat-set inserts in the skirt: 3 for tubes under 200 mm ID, 6 above.</li>
+    <li><b>Fan:</b> optional, mounted on the back of the rear plate and blowing into the tube, through the plate's central opening and a matching hole in the mirror plate. Uses heat-set inserts and ${'#4-40 (40 mm fans) or #6-32 screws'}.</li>
+    <li><b>Material:</b> ${esc(P.material)}.</li>
+  </ul>`;
+}
+
+// ---------------------------------------------------------------- exports
+function slug() {
+  const d = state.design;
+  return `mirror-cell-${d.p.mirror.replace('.', '_')}in-mirror-${round(d.p.tubeID / IN, 2)}in-tube-${d.clips ? 'clips' : 'rtv'}${d.fan ? '-fan' + d.fan.size : ''}`;
+}
+function download(data, name, type) {
+  const blob = data instanceof Blob ? data : new Blob([data], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+function renderPartExports() {
+  const cad = state.cad; if (!cad) return;
+  $('#partExports').innerHTML = cad.parts.map(p =>
+    `<div class="grp"><span>${esc(p.name)}${p.count > 1 ? ` ×${p.count}` : ''}</span><button class="btn" data-exp="3mf-part" data-part="${p.id}">3MF</button><button class="btn" data-exp="step-part" data-part="${p.id}">STEP</button></div>`).join('');
+  $$('#exports button[data-exp="3mf-all"], #exports button[data-exp="step-asm"]').forEach(b => b.disabled = false);
+}
+
+async function doExport(kind, partId) {
+  const d = state.design, cad = state.cad;
+  try {
+    if (kind === 'svg') return download(`<?xml version="1.0" encoding="UTF-8"?>\n` + Core.drawSheet(d), slug() + '-drawing.svg', 'image/svg+xml');
+    if (kind === 'csv') return download(Core.bomCSV(d, { fits: state.fits }), slug() + '-bom.csv', 'text/csv;charset=utf-8');
+    if (kind === 'md') return download(Core.report(d, { interference: state.interference, fits: state.fits }), slug() + '-report.md', 'text/markdown');
+    if (!cad) return;
+    setStatus('Exporting…', true); await nextFrame();
+    const fitsById = Object.fromEntries(state.fits.map(f => [f.id, f.fit]));
+    const item = (p) => ({ name: p.name, mesh: Core.weldMesh(Core.meshShape(p.print, true)), fit: fitsById[p.id], count: p.count });
+    if (kind === '3mf-all') download(Core.make3MF(zipSync, cad.parts.map(item), { bed: d.p.bed, title: slug() }), slug() + '.3mf', 'model/3mf');
+    if (kind === '3mf-part') { const p = cad.parts.find(x => x.id === partId); download(Core.make3MF(zipSync, [item(p)], { bed: d.p.bed, title: p.name }), `${slug()}-${p.id}.3mf`, 'model/3mf'); }
+    if (kind === 'step-asm') {
+      const shapes = [];
+      for (const p of cad.parts) p.asm.forEach((s, i) => shapes.push({ shape: s.clone(), name: p.asm.length > 1 ? `${p.name} ${i + 1}` : p.name, color: p.color }));
+      download(R.exportSTEP(shapes), slug() + '-assembly.step', 'model/step');
+    }
+    if (kind === 'step-part') { const p = cad.parts.find(x => x.id === partId); download(R.exportSTEP([{ shape: p.print.clone(), name: p.name, color: p.color }]), `${slug()}-${p.id}.step`, 'model/step'); }
+    setStatus('Exported.');
+  } catch (e) { console.error(e); setStatus('Export failed: ' + (e.message || e)); }
+}
+
+// ---------------------------------------------------------------- three.js scene
+const canvas = $('#canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.localClippingEnabled = true;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 1, 10000);
+camera.up.set(0, 0, 1);
+camera.position.set(260, -380, 260);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8090a0, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(300, -200, 500); scene.add(sun);
+const fill = new THREE.DirectionalLight(0xffffff, 0.6); fill.position.set(-300, 300, -200); scene.add(fill);
+const asmRoot = new THREE.Group(), printRoot = new THREE.Group();
+scene.add(asmRoot, printRoot);
+const clipPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
+const allMaterials = new Set();
+let explodeTargets = [];
+
+function themeScene() {
+  const css = getComputedStyle(document.documentElement);
+  scene.background = new THREE.Color(css.getPropertyValue('--scene').trim() || '#eef1f5');
+}
+
+function geomFromMesh(m) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(m.vertices, 3));
+  if (m.normals && m.normals.length === m.vertices.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(m.normals, 3));
+  g.setIndex(m.triangles);
+  if (!g.getAttribute('normal')) g.computeVertexNormals();
+  return g;
+}
+function mat(color, opts = {}) {
+  const m = opts.ghost
+    ? new THREE.MeshPhysicalMaterial({ color, transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide })
+    : new THREE.MeshStandardMaterial({ color, roughness: opts.metal ? 0.35 : 0.65, metalness: opts.metal ? 0.7 : 0.02, side: THREE.DoubleSide, transparent: !!opts.opacity, opacity: opts.opacity ?? 1, depthWrite: !opts.opacity });
+  allMaterials.add(m);
+  return m;
+}
+function objFromShape(shape, color, opts = {}) {
+  const grp = new THREE.Group();
+  const mesh = new THREE.Mesh(geomFromMesh(Core.meshShape(shape)), mat(color, opts));
+  mesh.renderOrder = opts.ghost ? 2 : 0;
+  grp.add(mesh);
+  if (opts.edges !== false) {
+    const e = shape.meshEdges({ tolerance: 0.1, angularTolerance: 0.3 });
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.Float32BufferAttribute(e.lines, 3));
+    const lm = new THREE.LineBasicMaterial({ color: opts.ghost ? 0x6aa0d8 : 0x20262e, transparent: true, opacity: opts.ghost ? 0.5 : 0.35 });
+    allMaterials.add(lm);
+    grp.add(new THREE.LineSegments(lg, lm));
+  }
+  return grp;
+}
+function clearGroup(g) {
+  for (const c of [...g.children]) {
+    c.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { allMaterials.delete(o.material); o.material.dispose(); } });
+    g.remove(c);
+  }
+}
+
+const EXPLODE = { rear: -35, rearBolts: -70, fan: -95, fanScrews: -120, mirrorPlate: 0, clips: 70, clipScrews: 90, mirror: 38, tube: 0 };
+
+function buildScene() {
+  const d = state.design, cad = state.cad;
+  clearGroup(asmRoot); clearGroup(printRoot);
+  explodeTargets = [];
+  const add = (obj, group, tag) => { obj.userData.group = group; obj.userData.tag = tag; asmRoot.add(obj); explodeTargets.push(obj); return obj; };
+  for (const p of cad.parts) {
+    const grp = p.id === 'rear-plate' ? 'rear' : p.id === 'mirror-plate' ? 'mirrorPlate' : 'clips';
+    for (const s of p.asm) add(objFromShape(s, p.color), grp, 'part');
+  }
+  add(objFromShape(cad.mirror, 0xa8d0f5, { ghost: true }), 'mirror', 'mirror');
+  for (const h of cad.hardware) add(objFromShape(h.shape, h.color, { metal: true, edges: false }), h.group, 'hw');
+  if (d.fan) { cad.fan = Core.buildFan(R, d); add(objFromShape(cad.fan, 0x3a3f47, { opacity: 0.85 }), 'fan', 'hw'); }
+  cad.tube = Core.buildTube(R, d);
+  add(objFromShape(cad.tube, 0x9aa7b5, { opacity: 0.25, edges: false }), 'tube', 'tube');
+
+  // print layout: one bed square per part, parts rotated to their best fit
+  let x = 0;
+  const bed = d.p.bed;
+  const css = getComputedStyle(document.documentElement);
+  for (const f of state.fits) {
+    const part = cad.parts.find(p => p.id === f.id);
+    const holder = new THREE.Group();
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(bed, bed), mat(f.fit.fits ? 0x8fa3b8 : 0xd9534f, { opacity: 0.25 }));
+    holder.add(plate);
+    const border = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(bed, bed)), new THREE.LineBasicMaterial({ color: f.fit.fits ? 0x51606f : 0xd9534f }));
+    holder.add(border);
+    const copies = f.count;
+    const span = (f.fit.w + 8) * copies - 8;
+    for (let i = 0; i < copies; i++) {
+      const o = objFromShape(part.print, part.color);
+      o.rotation.z = f.fit.angle * Math.PI / 180;
+      o.position.set(-f.fit.cx - span / 2 + f.fit.w / 2 + i * (f.fit.w + 8), -f.fit.cy, 0.05);
+      holder.add(o);
+    }
+    holder.position.x = x + bed / 2;
+    printRoot.add(holder);
+    x += Math.max(bed, f.fit.w) + 40;
+  }
+  printRoot.position.x = -x / 2 + 20;
+
+  $('#overlay').style.display = 'none';
+  const legend = [['Rear tube plate', '#4f7cac'], ['Mirror plate', '#c9803a']];
+  if (d.clips) legend.push(['Clips', '#5a9e6f']);
+  legend.push(['Mirror (ghosted)', '#a8d0f5'], ['Bolts', '#9aa1a8'], ['Heat-set inserts', '#c8a24a']);
+  if (d.fan) legend.push(['Fan', '#3a3f47']);
+  $('#legend').innerHTML = legend.map(([n, c]) => `<span><i style="background:${c}"></i>${n}</span>`).join('');
+  showScene(!buildScene.done); buildScene.done = true;
+}
+
+function showScene(refit) {
+  const asm = state.view === 'asm';
+  asmRoot.visible = asm; printRoot.visible = !asm;
+  const hw = $('#optHw').checked, tube = $('#optTube').checked, section = $('#optSection').checked && asm;
+  for (const o of explodeTargets) {
+    if (o.userData.tag === 'hw') o.visible = hw;
+    if (o.userData.tag === 'tube') o.visible = tube;
+  }
+  for (const m of allMaterials) { m.clippingPlanes = section ? [clipPlane] : []; m.needsUpdate = true; }
+  applyExplode();
+  if (refit) fitCamera();
+}
+
+function applyExplode() {
+  const e = +$('#optExplode').value;
+  for (const o of explodeTargets) o.position.z = (EXPLODE[o.userData.group] || 0) * e;
+}
+
+function fitCamera() {
+  const root = state.view === 'asm' ? asmRoot : printRoot;
+  const box = new THREE.Box3();
+  root.traverse(o => { if (o.isMesh && o.visible && o.userData.tag !== 'tube') box.expandByObject(o); });
+  if (box.isEmpty()) return;
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const dist = sphere.radius / Math.sin(camera.fov * Math.PI / 360) * 0.82;
+  const dir = state.view === 'asm' ? new THREE.Vector3(0.55, -0.75, 0.55) : new THREE.Vector3(0, -0.8, 1.0);
+  dir.normalize();
+  camera.position.copy(sphere.center).addScaledVector(dir, dist);
+  camera.near = dist / 100; camera.far = dist * 10; camera.updateProjectionMatrix();
+  controls.target.copy(sphere.center); controls.update();
+}
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas.parentElement);
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+
+// ---------------------------------------------------------------- start
+async function initKernel() {
+  setStatus('Loading CAD kernel (OpenCascade, ~23 MB the first time)…', true);
+  const [rep, oc, ff] = await Promise.all([import(CDN.replicad), import(CDN.oc), import(CDN.fflate)]);
+  const OC = await oc.default({ locateFile: () => CDN.ocWasm });
+  rep.setOC(OC);
+  R = rep; zipSync = ff.zipSync;
+}
+
+(async function main() {
+  try { const t = localStorage.getItem('mirror-cell-theme'); if (t) document.documentElement.dataset.theme = t; } catch { /* ignore */ }
+  loadSaved();
+  themeScene();
+  bindForm(); fillForm(); renderDecisions(); resize();
+  update();
+  try { await initKernel(); }
+  catch (e) {
+    console.error(e);
+    setStatus('Could not load the CAD kernel — check your internet connection and reload.');
+    $('#overlay').textContent = 'Could not load the CAD kernel from the CDN. The 2D layout and checks still work; 3D preview and STEP/3MF export need the kernel.';
+    return;
+  }
+  update();
+})();
+</script>
+</body>
+</html>
