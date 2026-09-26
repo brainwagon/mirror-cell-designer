@@ -163,13 +163,14 @@ Each example folder contains:
 ## Assembly notes
 
 1. Press the heat-set inserts in with the part cold and fully cured:
-   - **Rear plate:** push-bolt inserts from the rear face, fan inserts from the rear face, and tube-screw inserts radially from outside the skirt.
+   - **Rear plate:** push-bolt inserts from the rear face and tube-screw inserts radially from outside the skirt.
    - **Mirror plate:** pull-bolt inserts from the rear face, and clip inserts from the tops of the posts.
-2. Fit the three push bolts with their jam nuts into the rear plate, backed out so they protrude only a little.
-3. Put the pull bolts, with washers, through the rear plate and thread them into the mirror plate until the plates sit at roughly the nominal gap shown in the report.
-4. **RTV:** put a blob of neutral-cure silicone in each pad cup. Lower the mirror onto the pad rims, which set the 2 mm layer. Leave it face-up for 24 h. **Clips:** place the mirror on the pads and screw the clips on. They should not touch the glass.
-5. Slide the cell into the tube so the skirt is flush with the tube end. Drill through the tube at the skirt inserts (the angles and distance from the tube end are in the hole schedule) and fit the tube screws (same size as the push-pull bolts; drill size is in the BOM).
-6. **Collimate:** loosen the push bolts, adjust with the pull bolts, then run the push bolts down and lock the jam nuts.
+2. **Wear pads:** on the mirror plate's rear face, cement a small steel flat washer over each of the three Ø1 mm marks (hole schedule M) using epoxy or CA. Use #6 SAE for #10-24 push bolts and #10 SAE for 1/4-20. The push-bolt tips then bear on steel, not plastic.
+3. Fit the three push bolts with their jam nuts into the rear plate, backed out so they protrude only a little.
+4. Put the pull bolts, with washers, through the rear plate and thread them into the mirror plate until the plates sit at roughly the nominal gap shown in the report.
+5. **RTV:** put a blob of neutral-cure silicone in each pad cup. Lower the mirror onto the pad rims, which set the 2 mm layer. Leave it face-up for 24 h. **Clips:** place the mirror on the pads and screw the clips on. They should not touch the glass.
+6. Slide the cell into the tube so the skirt is flush with the tube end. Drill through the tube at the skirt inserts (the angles and distance from the tube end are in the hole schedule) and fit the tube screws (same size as the push-pull bolts; drill size is in the BOM).
+7. **Collimate:** loosen the push bolts, adjust with the pull bolts, then run the push bolts down and lock the jam nuts.
 
 ## Limitations
 

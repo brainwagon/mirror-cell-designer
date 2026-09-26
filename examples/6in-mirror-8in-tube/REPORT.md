@@ -42,6 +42,7 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Rear plate | F | 3 | Vent window (annular sector) | R45.4–R89.5, 77.5° wide | 120.4°–197.9°, 240.4°–317.9°, 0.4°–77.9° |  |
 | Mirror plate | G | 3 | #10-24 heat-set insert (pull bolt), blind | Ø5.6 × 10.9 deep | R49.53 @ 90°, 210°, 330° | from rear face (bed side) |
 | Mirror plate | H | 3 | RTV cup in pad top | Ø9.4 × 2 deep | R49.53 @ 90°, 210°, 330° |  |
+| Mirror plate | M | 3 | Wear-washer locating mark (push-bolt contact) | Ø1 × 1 deep | R49.53 @ 106.8°, 226.8°, 346.8° | rear face (bed side) |
 | Mirror plate | I | 1 | Central vent | Ø57 thru | centre |  |
 | Mirror plate | J | 3 | Vent hole | Ø24 thru | R44.61 @ 158.4°, 278.4°, 38.4° |  |
 
@@ -56,6 +57,7 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | S4 | Screw | 4 | Thread-forming screw for plastics, pan head (fan mount) | #6 | 7/8" | fan → rear plate pilot holes | e.g. Hi-Lo or 48° plastic-forming thread; Ø2.8 mm pilot holes; don't overtighten |
 | N1 | Nut / washer | 3 | Hex jam nut | #10-24 |  | push bolts | 3/8" across flats |
 | N2 | Nut / washer | 3 | Flat washer, SAE | #10-24 |  | under pull-bolt heads | Ø12.7 mm OD |
+| N3 | Nut / washer | 3 | Steel flat washer (wear pad for the push-bolt tip) | #6 SAE (≈ Ø9.5 OD, Ø4 hole, 1.2 thick) |  | cemented to the mirror plate rear face at the Ø1 marks | hole must be smaller than the Ø4.8 bolt tip; epoxy or CA |
 | I1 | Heat-set insert | 12 | Brass heat-set insert (tapered, for plastics) | #10-24, 6.4 mm long, for Ø5.6 mm hole |  | rear plate, push bosses; mirror plate, pad columns; rear-plate skirt (radial) | install from rear face; install from outside |
 | F1 | Fan | 1 | 60 mm 12 V DC fan | 6015 (60 × 60 × 15 mm), 50 mm hole spacing |  | rear face of rear plate | blows into the tube; 12 V supply and lead not included |
 | C1 | Consumable | 1 | Neutral-cure silicone RTV | alkoxy/oxime cure — not acetic (vinegar-smelling) |  | pad cups | 3 blobs, 2 mm thick |
@@ -93,11 +95,12 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Mirror plate | wall around pull insert P1 | 3.05 | ≥ 2 | PASS |
 | Mirror plate | wall around pull insert P2 | 3.05 | ≥ 2 | PASS |
 | Mirror plate | wall around pull insert P3 | 3.05 | ≥ 2 | PASS |
-| Mirror plate | solid push-bolt contact P1 (incl. 0.8 mm slide at full tilt) | 6 | ≥ 0 | PASS |
+| Mirror plate | wear-washer seat P1 on solid plastic (Ø9.5, incl. 0.8 mm slide at full tilt) | 5.67 | ≥ 0.5 | PASS |
+| Mirror plate | push-bolt tip (Ø4.83) larger than the wear-washer hole (Ø4) | 0.83 | ≥ 0.3 | PASS |
 | Mirror plate | pad column P1 (incl. root fillet) clear of vents | 12.83 | ≥ 1 | PASS |
-| Mirror plate | solid push-bolt contact P2 (incl. 0.8 mm slide at full tilt) | 6 | ≥ 0 | PASS |
+| Mirror plate | wear-washer seat P2 on solid plastic (Ø9.5, incl. 0.8 mm slide at full tilt) | 5.67 | ≥ 0.5 | PASS |
 | Mirror plate | pad column P2 (incl. root fillet) clear of vents | 12.83 | ≥ 1 | PASS |
-| Mirror plate | solid push-bolt contact P3 (incl. 0.8 mm slide at full tilt) | 6 | ≥ 0 | PASS |
+| Mirror plate | wear-washer seat P3 on solid plastic (Ø9.5, incl. 0.8 mm slide at full tilt) | 5.67 | ≥ 0.5 | PASS |
 | Mirror plate | pad column P3 (incl. root fillet) clear of vents | 12.83 | ≥ 1 | PASS |
 | Mirror plate | cap above pull insert hole | 2.5 | ≥ 2 | PASS |
 | Push-pull | pull-bolt engagement at max gap (17.7 mm) | 6.4 | ≥ 6.4 | PASS |
@@ -108,7 +111,7 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Fan | fan-screw tip protrusion past plate front (must clear mirror plate) | 0.72 | ≤ 13.65 | PASS |
 | Fan | fan-screw thread engagement in the plate (#6 thread-forming) | 6.5 | ≥ 5.27 | PASS |
 | Assembly | radial clearance to tube, worst of 8 poses at ±1.5 mm per pair (2.3° max tilt, pose −++); needs tube ID ≥ 177.2 mm (6.98") | 14.01 | ≥ 1 | PASS |
-| Assembly | axial gap mirror plate ↔ rear plate, worst pose (+−−) | 13.2 | ≥ 1 | PASS |
+| Assembly | axial gap mirror plate ↔ rear plate, worst pose (+−−) | 12.8 | ≥ 1 | PASS |
 | Assembly | gap mirror plate ↔ fan-screw tips, worst pose | 13.51 | ≥ 0.5 | PASS |
 | Push-pull | pull-bolt tilt room in rear-plate hole at 2.3° | 0.31 | ≥ 0.1 | PASS |
 | Assembly | mirror edge to lateral post gap | 0.75 | ≥ 0.25 | PASS |
@@ -123,7 +126,7 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Tube horizontal: 22.7 N lateral (mirror 1.16 kg × 2) | pull-bolt bending across the gap (steel, #10-24 root Ø3.5) | 34.91 MPa | 250 MPa | 14% | PASS |
 | Tube vertical: preload 100 N + 8.4 N weight share per pair | pull-bolt insert pull-out (mirror plate, #10-24) | 108.35 N | 400 N | 27% | PASS |
 | Tube vertical: preload 100 N + 8.4 N weight share per pair | push-bolt insert pull-out (rear plate, #10-24) | 108.35 N | 400 N | 27% | PASS |
-| Tube vertical: preload 100 N + 8.4 N weight share per pair | push-bolt tip bearing on mirror plate | 9.87 MPa | 15 MPa | 66% | PASS |
+| Tube vertical: preload 100 N + 8.4 N weight share per pair | push-bolt load on mirror plate through the Ø9.5 wear washer | 1.86 MPa | 15 MPa | 12% | PASS |
 | Tube vertical: preload 100 N + 8.4 N weight share per pair | pull-bolt washer bearing on rear plate | 1.04 MPa | 15 MPa | 7% | PASS |
 | Tube vertical: preload 100 N + 8.4 N weight share per pair | mirror plate local bending at each pair (t = 6.5 mm) | 9.62 MPa | 10 MPa | 96% | PASS |
 | Tube vertical: preload 100 N + 8.4 N weight share per pair | rear plate local bending at each pair (t = 6.5 mm) | 9.62 MPa | 10 MPa | 96% | PASS |

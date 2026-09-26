@@ -231,9 +231,11 @@ const MirrorCellCore = (() => {
     '#6-32':  { label: '#6-32',  major: 3.505, clear: 4.0, head: 5.7, insHole: 4.0, insOD: 4.6, insLen: 4.8 },
     '#8-32':  { label: '#8-32',  major: 4.166, clear: 4.7, head: 6.9, insHole: 4.7, insOD: 5.3, insLen: 5.6, drill: '3/16" (4.8 mm)' },
     '#10-24': { label: '#10-24', major: 4.826, clear: 5.4, head: 7.9, insHole: 5.6, insOD: 6.3, insLen: 6.4,
-                washerOD: 12.7, washerT: 1.2, jamT: 3.2, nutAF: 9.5, minor: 3.50, drill: '13/64" (5.2 mm)' },
+                washerOD: 12.7, washerT: 1.2, jamT: 3.2, nutAF: 9.5, minor: 3.50, drill: '13/64" (5.2 mm)',
+                wear: { label: '#6 SAE', od: 9.5, id: 4.0, t: 1.2 } },
     '1/4-20': { label: '1/4-20', major: 6.35,  clear: 7.0, head: 9.5, insHole: 7.6, insOD: 8.4, insLen: 8.0,
-                washerOD: 15.9, washerT: 1.7, jamT: 4.0, nutAF: 11.1, minor: 4.79, drill: '17/64" (6.7 mm)' },
+                washerOD: 15.9, washerT: 1.7, jamT: 4.0, nutAF: 11.1, minor: 4.79, drill: '17/64" (6.7 mm)',
+                wear: { label: '#10 SAE', od: 12.7, id: 5.6, t: 1.2 } },
   };
 
   // Standard fans: hole spacing, clear opening, frame thickness, screw size.
@@ -767,9 +769,12 @@ const MirrorCellCore = (() => {
     }
     d.pairs.forEach((pr, i) => {
       const slide = (d.z_mb - d.z_pivot) * Math.sin(d.tiltMax);   // contact point slides this far at full tilt
-      let m = d.R_core - Math.hypot(...pr.push) - d.contactR - slide;
-      for (const c of mpCuts) m = Math.min(m, distToCut(pr.push, c) - d.contactR - slide);
-      add('Mirror plate', `solid push-bolt contact P${i + 1} (incl. ${round(slide, 1)} mm slide at full tilt)`, m, 0);
+      const wr = d.pb.wear.od / 2;
+      let m = d.R_core - Math.hypot(...pr.push) - wr - slide;
+      for (const c of mpCuts) m = Math.min(m, distToCut(pr.push, c) - wr - slide);
+      m = Math.min(m, dist(pr.push, pr.pull) - wr - d.pb.insHole / 2);
+      add('Mirror plate', `wear-washer seat P${i + 1} on solid plastic (Ø${d.pb.wear.od}, incl. ${round(slide, 1)} mm slide at full tilt)`, m, 0.5);
+      if (i === 0) add('Mirror plate', `push-bolt tip (Ø${round(d.pb.major, 2)}) larger than the wear-washer hole (Ø${d.pb.wear.id})`, d.pb.major - d.pb.wear.id, 0.3);
       let pc = Infinity;
       for (const c of mpCuts) pc = Math.min(pc, distToCut(pr.pull, c) - d.padR - d.fPad);
       add('Mirror plate', `pad column P${i + 1} (incl. root fillet) clear of vents`, pc, 1);
@@ -816,6 +821,10 @@ const MirrorCellCore = (() => {
         radialPts.push([xy[0], xy[1], d.zTop], [xy[0], xy[1], d.z_mb]);
         rearPts.push([xy[0], xy[1], d.z_mb]);
       }
+    }
+    for (const pr of d.pairs) for (let i = 0; i < 12; i++) {
+      const [x, y] = pol(d.pb.wear.od / 2, i * 30);
+      rearPts.push([pr.push[0] + x, pr.push[1] + y, d.z_mb - d.pb.wear.t]);   // wear washer underside
     }
     for (let i = 0; i < 72; i++) {
       const [x, y] = pol(1, i * 5);
@@ -893,7 +902,7 @@ const MirrorCellCore = (() => {
     const ins = S.insertPullout[d.pbKey];
     add(B, `pull-bolt insert pull-out (mirror plate, ${d.pbKey})`, Fax, ins, 'N', 'assumed sustained allowable');
     add(B, `push-bolt insert pull-out (rear plate, ${d.pbKey})`, Fax, ins, 'N', 'assumed sustained allowable');
-    add(B, 'push-bolt tip bearing on mirror plate', Fax / (S.tipArea * Math.PI * d.pb.major ** 2 / 4), S.sigmaBear, 'MPa', `σ = F / (${S.tipArea}·π·d²/4)`);
+    add(B, `push-bolt load on mirror plate through the Ø${d.pb.wear.od} wear washer`, Fax / (Math.PI * (d.pb.wear.od ** 2 - d.pb.wear.id ** 2) / 4), S.sigmaBear, 'MPa', 'σ = F / washer annulus');
     add(B, 'pull-bolt washer bearing on rear plate', Fax / (Math.PI * (d.pb.washerOD ** 2 - d.pullClear ** 2) / 4), S.sigmaBear, 'MPa', 'σ = F / washer annulus');
     add(B, `mirror plate local bending at each pair (t = ${d.t_m} mm)`, 3 * Fax / (S.eta * d.t_m ** 2), S.sigmaXY, 'MPa', 'σ = 3F / (η·t²)');
     add(B, `rear plate local bending at each pair (t = ${d.t_r} mm)`, 3 * Fax / (S.eta * d.t_r ** 2), S.sigmaXY, 'MPa', 'σ = 3F / (η·t²)');
@@ -950,6 +959,8 @@ const MirrorCellCore = (() => {
     // ----- nuts and washers
     add('Nut / washer', 3, 'Hex jam nut', pb, '', 'push bolts', `${NUT_WRENCH[pb]} across flats`);
     add('Nut / washer', 3, 'Flat washer, SAE', pb, '', 'under pull-bolt heads', `Ø${round(d.pb.washerOD, 1)} mm OD`);
+    add('Nut / washer', 3, 'Steel flat washer (wear pad for the push-bolt tip)', `${d.pb.wear.label} (≈ Ø${d.pb.wear.od} OD, Ø${d.pb.wear.id} hole, ${d.pb.wear.t} thick)`, '',
+      'cemented to the mirror plate rear face at the Ø1 marks', `hole must be smaller than the Ø${round(d.pb.major, 1)} bolt tip; epoxy or CA`);
 
     // ----- heat-set inserts
     const ins = (f, key) => `${key}, ${f.insLen} mm long, for Ø${f.insHole} mm hole`;
@@ -1030,6 +1041,8 @@ const MirrorCellCore = (() => {
       loc: `R${round(d.postC, 2)} @ ${d.pairs.map(p => ang(p.th)).join(', ')}`, install: 'from top of post' });
     else h.push({ part: 'Mirror plate', label: 'H', qty: 3, desc: 'RTV cup in pad top', size: `Ø${round(2 * d.cupR, 1)} × ${d.cupD} deep`,
       loc: `R${round(d.Rpad, 2)} @ ${d.pairs.map(p => ang(p.th)).join(', ')}`, install: '' });
+    h.push({ part: 'Mirror plate', label: 'M', qty: 3, desc: 'Wear-washer locating mark (push-bolt contact)', size: 'Ø1 × 1 deep',
+      loc: `R${round(d.Rpad, 2)} @ ${d.pairs.map(p => ang(p.pushAng)).join(', ')}`, install: 'rear face (bed side)' });
     h.push({ part: 'Mirror plate', label: 'I', qty: 1, desc: 'Central vent', size: `Ø${round(2 * d.r_c, 1)} thru`, loc: 'centre', install: '' });
     if (d.vents.length) h.push({ part: 'Mirror plate', label: 'J', qty: d.vents.length, desc: 'Vent hole', size: `Ø${round(2 * d.vents[0].r, 1)} thru`,
       loc: `R${round(d.vents[0].rv, 2)} @ ${d.vents.map(v => ang(v.ang)).join(', ')}`, install: '' });
@@ -1203,6 +1216,8 @@ const MirrorCellCore = (() => {
     }
     mp = mp.cut(cyl(d.r_c, d.t_m + 2, [0, 0], d.z_mb - 1));
     for (const v of d.vents) mp = mp.cut(cyl(v.r, d.t_m + 2, v.c, d.z_mb - 1));
+    // Ø1 × 1 mm marks on the rear face where the push bolts bear: locate the wear washers
+    for (const pr of d.pairs) mp = mp.cut(cyl(0.5, 1.01, pr.push, d.z_mb - 0.01));
 
     // ----- clips (built flat in print orientation, local +X = radial)
     let clipPrint = null;
@@ -1595,7 +1610,7 @@ const MirrorCellCore = (() => {
       v2 += circle(T2(pr.pull), d.padR, { w: 0.5, fill: 'var(--bg, #fff)' });
       if (!d.clips) v2 += circle(T2(pr.pull), d.cupR, { dash: '1 0.8' });
       v2 += circle(T2(pr.pull), d.pb.insHole / 2, { dash: '1.5 1', color: S.hid });
-      v2 += circle(T2(pr.push), d.contactR, { dash: '0.8 0.8', color: S.hid });
+      v2 += circle(T2(pr.push), d.pb.wear.od / 2, { dash: '0.8 0.8', color: S.hid }) + circle(T2(pr.push), 0.5, { color: S.hid });
       if (d.clips) v2 += circle(T2(pol(d.postC, pr.th)), d.clipF.insHole / 2);
     }
     v2 += circle(T2([0, 0]), d.Rm, { dash: '4 2', color: S.hid });
@@ -1607,7 +1622,7 @@ const MirrorCellCore = (() => {
     const pp = d.pairs[0];
     v2 += leader(T2(pp.pull), [T2(pp.pull)[0] + 16, c2[1] - d.R_mpo - 6],
       `pad Ø${f1(2 * d.padR)}; G Ø${d.pb.insHole}×${f1(d.holeDepth)} from rear` + (d.clips ? '' : `; H cup Ø${f1(2 * d.cupR)}×${d.cupD}`));
-    v2 += leader(T2(pp.push), [T2(pp.push)[0] - 26, c2[1] - d.R_mpo + 4], 'push-bolt contact');
+    v2 += leader(T2(pp.push), [T2(pp.push)[0] - 26, c2[1] - d.R_mpo + 4], `M Ø1×1 mark on rear: Ø${d.pb.wear.od} wear washer`);
     const tipPt = pol(d.R_mpo, pp.th);
     v2 += dimLin(T2(pol(d.R_mpo, pp.th - 90).map((v, i) => v * (d.wTip / 2) / d.R_mpo + tipPt[i])), T2(pol(d.R_mpo, pp.th + 90).map((v, i) => v * (d.wTip / 2) / d.R_mpo + tipPt[i])), 5, `${d.wTip}`);
     v2 += leader(T2(pol(d.postC, d.pairs[2].th)), [T2(pol(d.postC, d.pairs[2].th))[0] + 14, T2(pol(d.postC, d.pairs[2].th))[1] + 14],
@@ -2021,6 +2036,7 @@ function renderDecisions() {
     <li><b>Rear plate style (option):</b> <i>Ring</i> (default) is a full plate with a skirt around the tube wall, 3 or 6 tube screws and vent windows. <i>3 spokes</i> is a hub carrying the push-pull pairs and fan, with one ${RU.spokeWidth} mm spoke per pair, centred between its pull and push bolts. Each spoke ends in a pad against the tube wall with one radial tube screw (3 in total). Its footprint is about 13% smaller (an 8" mirror in a 10" tube goes from 253 to about 223 mm) and it uses roughly 40% less plastic. The three pads centre the plate in the tube and tolerate an out-of-round tube better than a ring. The spokes are sized by the strength checks.</li>
     <li><b>Print orientation, no supports:</b> the rear plate prints front-face-down, so the skirt and push bosses grow upward. The radial tube-screw holes are teardrops pointing up. The mirror plate prints rear-face-down, with pads and posts growing upward. The blind insert holes open onto the bed, and their small (&lt; 8 mm) roofs bridge. Clips print flat.</li>
     <li><b>Push-pull:</b> 3 pairs at 120°, on a circle of 0.65 × mirror diameter (close to the optimum for 3-point support). Each pull bolt passes through a clearance hole in the rear plate and threads into a heat-set insert inside the pad column that the mirror rests on. The push bolt threads through a heat-set insert in a boss on the rear plate, bears on the mirror plate's back, and is locked with a jam nut. Bolts are #10-24 for 4.25" and 6" mirrors and 1/4-20 for 8" and 10" mirrors. Default travel at each pair is sized so the worst case (one pair fully out, two fully in) tilts the mirror about 2.5°: ±1 mm for 4.25", ±1.5 mm for 6", ±2 mm for 8" and ±2.5 mm for 10". That is several times what collimation needs, and it is adjustable under Advanced. The plate gap is set so a standard-length pull bolt fully engages its insert at maximum gap and never bottoms at minimum gap. All 8 extreme poses (each pair at +travel or −travel) are checked for clearance to the tube wall and the rear plate, both analytically and with a CAD intersection. The pull-bolt clearance holes are enlarged automatically if the travel you choose would make the bolts bind as they tilt.</li>
+    <li><b>Push-bolt wear pads:</b> the mirror plate has a Ø1 × 1 mm mark on its rear face under each push bolt. Cement a small steel flat washer over each mark (#6 SAE for #10-24 push bolts, #10 SAE for 1/4-20), so the bolt tip bears on steel instead of plastic. The washer's hole is smaller than the bolt tip. Checks confirm each washer sits on solid plastic (allowing for how far the contact point slides at full tilt) and that the tilted plate still clears the rear plate with the washers fitted.</li>
     <li><b>Strength:</b> plate thicknesses, lateral-post depth, arm ribs and (RTV) pad size are sized by hand calculations for three load cases: tube horizontal, tube vertical with the locked push-pull preload, and tube pointing down. They are checked against sustained allowables for printed PETG/ASA. The results are in the Strength table on the Checks tab. Lock the pairs finger-snug (Advanced › push-pull lock preload, default 100 N per bolt); the BOM gives the torque.</li>
     <li><b>Walls:</b> the generator aims for ${RU.wallDesign} mm around inserts, measured from the insert's outside diameter. Every insert and through-hole is checked for ≥ ${RU.wallMin} mm to the nearest hole, cut-out or edge. Blind holes keep ≥ ${RU.capMin} mm of cap.</li>
     <li><b>Retention:</b> <i>RTV</i> — each pad has a ${RU.rtvCupDepth} mm-deep cup that sets the silicone thickness, and 3 lateral stops sit at the mirror edge. <i>Clips</i> — the mirror rests on flat pads, and 3 posts carry ${RU.clipThick} mm clips that overlap the face by ${RU.clipOverlap} mm, with a small gap so they never pinch the glass.</li>
