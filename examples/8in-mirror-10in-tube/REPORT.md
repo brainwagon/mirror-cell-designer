@@ -16,7 +16,7 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 | Push-pull | Pull-to-push spacing (chord) | 17.5 mm (15.23°) |
 | Push-pull | Nominal plate gap | 12.05 mm (±2 mm travel) |
 | Push-pull | Max tilt at full travel (one pair out, two in) | 2.31° |
-| Mirror plate | Inside fillets: pad roots / post inner faces / rib sides | 2 / 3 / 2 mm |
+| Mirror plate | Inside fillets: pad roots / post inner faces / rib sides / arm roots (in plane) | 2 / 3 / 2 / 8 mm |
 | Rear plate | Inside fillets: skirt joint / boss roots / window corners | 3 / 1.5 / 4 mm |
 | Mirror plate | Core diameter | 156.5 mm (6.161") |
 | Mirror plate | Span across posts | 226.7 mm (8.925") |
@@ -51,7 +51,7 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 | Ref | Category | Qty | Description | Size / spec | Length | Used in | Notes |
 |---|---|---|---|---|---|---|---|
 | P1 | Printed part | 1 | Rear tube plate | PETG or ASA; Ø253.4 × 21.5 mm |  | tube end | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 253.4 × 253.4 mm (exceeds 235 mm bed); solid volume 300.9 cm³ |
-| P2 | Printed part | 1 | Mirror plate | PETG or ASA; 226.7 mm across posts × 48.8 mm tall |  | carries the mirror | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 197.4 × 197.4 mm; solid volume 127.4 cm³ |
+| P2 | Printed part | 1 | Mirror plate | PETG or ASA; 226.7 mm across posts × 48.8 mm tall |  | carries the mirror | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 197.4 × 197.4 mm; solid volume 127.7 cm³ |
 | P3 | Printed part | 3 | Mirror clip | PETG or ASA; 14.8 × 16 × 3 mm |  | clip posts | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 14.8 × 16 mm; solid volume 0.7 cm³ |
 | S1 | Screw | 3 | Socket head cap screw (pull / adjust) | 1/4-20 | 1-1/4" | rear plate → mirror plate pad inserts | a thumbscrew or knob of the same length also works; lock at ≈ 0.13 N·m |
 | S2 | Screw | 3 | Socket head cap screw (push / lock) | 1/4-20 | 1-1/4" | rear-plate push bosses | fully threaded; lock at ≈ 0.13 N·m |
@@ -106,6 +106,7 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 | Mirror plate | pad column P2 (incl. root fillet) clear of vents | 18.84 | ≥ 1 | PASS |
 | Mirror plate | wear-washer seat P3 on solid plastic (Ø12.7, incl. 0.6 mm slide at full tilt) | 5.2 | ≥ 0.5 | PASS |
 | Mirror plate | pad column P3 (incl. root fillet) clear of vents | 18.84 | ≥ 1 | PASS |
+| Mirror plate | arm-root fillet (R8) ends inboard of the lateral post | 19.08 | ≥ 0 | PASS |
 | Mirror plate | cap above pull insert hole | 2.5 | ≥ 2 | PASS |
 | Mirror plate | wall around clip insert C1 | 3.2 | ≥ 2 | PASS |
 | Mirror plate | wall around clip insert C2 | 3.2 | ≥ 2 | PASS |

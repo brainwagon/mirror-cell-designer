@@ -282,6 +282,7 @@ const MirrorCellCore = (() => {
     filletPad: 2.0,    // mirror plate: fillet where each pad column meets the plate
     filletPost: 3.0,   // mirror plate: fillet at the inner (tension) face of each lateral post
     filletRib: 2.0,    // mirror plate: fillet along both sides of each arm rib
+    filletArm: 8,      // mirror plate: in-plane fillet where each arm meets the core
     spokeWidth: 24,    // 3-spoke rear plate: minimum spoke (and tip pad) width
     filletSpoke: 6,    // 3-spoke rear plate: in-plane fillet where each spoke meets the hub
   };
@@ -308,6 +309,33 @@ const MirrorCellCore = (() => {
   };
 
   // T-section (flange wf × tf, centred rib wr × hr on top): section modulus and neutral axis
+  // In-plane fillet where a tapered arm meets a round core: a circle of radius f
+  // tangent to the arm's edge and to the core circle.  Local frame: +X along the
+  // arm, the edge on the +Y side (negate Y for the other edge).  The arm runs
+  // from r1 (width w1) to r2 (width w2) and starts inside the core.  Returns the
+  // tangent points, the corner the fillet fills, and the filled region's outline
+  // (edge -> fillet arc -> core arc) and area.
+  function armFillet(Rc, r1, r2, w1, w2, f) {
+    const k = (w2 - w1) / 2 / (r2 - r1), n = Math.hypot(1, k);
+    const u = [1 / n, k / n], nv = [-k / n, 1 / n], p0 = [r1, w1 / 2];
+    const at = (s, o = 0) => [p0[0] + s * u[0] + o * nv[0], p0[1] + s * u[1] + o * nv[1]];
+    // distance along the edge at which a point offset o from it lies at radius rr
+    const reach = (o, rr) => {
+      const q = at(0, o), b = q[0] * u[0] + q[1] * u[1];
+      return -b + Math.sqrt(b * b - q[0] ** 2 - q[1] ** 2 + rr * rr);
+    };
+    const sC = reach(f, Rc + f), c = at(sC, f);
+    const tLine = at(sC), tCore = [c[0] * Rc / (Rc + f), c[1] * Rc / (Rc + f)], corner = at(reach(0, Rc));
+    const outline = [corner, tLine];
+    const aL = Math.atan2(tLine[1] - c[1], tLine[0] - c[0]), aC = Math.atan2(tCore[1] - c[1], tCore[0] - c[0]);
+    for (let i = 1; i <= 12; i++) { const a = aL + (aC - aL) * i / 12; outline.push([c[0] + f * Math.cos(a), c[1] + f * Math.sin(a)]); }
+    const bC = Math.atan2(tCore[1], tCore[0]), bK = Math.atan2(corner[1], corner[0]);
+    for (let i = 1; i < 6; i++) { const b = bC + (bK - bC) * i / 6; outline.push([Rc * Math.cos(b), Rc * Math.sin(b)]); }
+    let area = 0;
+    outline.forEach((a, i) => { const b = outline[(i + 1) % outline.length]; area += (a[0] * b[1] - b[0] * a[1]) / 2; });
+    return { f, c, tLine, tCore, corner, u, outline, area: Math.abs(area) };
+  }
+
   function tSection(wf, tf, wr, hr) {
     const A1 = wf * tf, y1 = tf / 2, A2 = wr * hr, y2 = tf + hr / 2, A = A1 + A2;
     const yc = (A1 * y1 + A2 * y2) / A;
@@ -703,6 +731,7 @@ const MirrorCellCore = (() => {
     d.fPad = RULES.filletPad;
     d.fPost = Math.max(0, Math.min(RULES.filletPost, padH - 2));
     d.fRib = hRib > 0 ? Math.min(RULES.filletRib, hRib) : 0;
+    d.armFillet = armFillet(R_core, r_root, R_mpo, wRoot, wTip, RULES.filletArm);
     d.checks = runChecks(d);
     d.strength = runStrength(d);
     for (const c of d.strength) if (!c.pass) errors.push(`Strength check failed: ${c.case} – ${c.item} (${c.value} ${c.unit} vs allowable ${c.allow} ${c.unit})`);
@@ -779,6 +808,7 @@ const MirrorCellCore = (() => {
       for (const c of mpCuts) pc = Math.min(pc, distToCut(pr.pull, c) - d.padR - d.fPad);
       add('Mirror plate', `pad column P${i + 1} (incl. root fillet) clear of vents`, pc, 1);
     });
+    add('Mirror plate', `arm-root fillet (R${d.armFillet.f}) ends inboard of the lateral post`, d.Rm + d.latGap - d.armFillet.tLine[0], 0);
     add('Mirror plate', 'cap above pull insert hole', d.H_col - d.holeDepth - d.cupD, RULES.capMin);
     if (d.clips) {
       d.pairs.forEach((pr, i) => {
@@ -864,6 +894,7 @@ const MirrorCellCore = (() => {
   function massEstimates(d) {
     const Vmp = Math.PI * d.R_core ** 2 * d.t_m
       + 3 * (d.R_mpo - d.R_core) * (d.wRoot + d.wTip) / 2 * d.t_m
+      + 6 * d.armFillet.area * d.t_m
       + 3 * d.postD * d.wTip * (d.z_post - d.z_mf)
       + 3 * Math.PI * d.padR ** 2 * d.padH
       + 3 * d.wRib * d.hRib * (d.Rm + d.latGap - d.r_root);
@@ -1068,7 +1099,7 @@ const MirrorCellCore = (() => {
     add('Push-pull', 'Pull-to-push spacing (chord)', `${d.sp} mm (${round(d.delta, 2)}°)`);
     add('Push-pull', 'Nominal plate gap', `${round(d.g, 2)} mm (±${d.adj} mm travel)`);
     add('Push-pull', 'Max tilt at full travel (one pair out, two in)', `${round(d.tiltMax * R2D, 2)}°`);
-    add('Mirror plate', 'Inside fillets: pad roots / post inner faces / rib sides', `${d.fPad} / ${round(d.fPost, 1)} / ${d.fRib || '—'} mm`);
+    add('Mirror plate', 'Inside fillets: pad roots / post inner faces / rib sides / arm roots (in plane)', `${d.fPad} / ${round(d.fPost, 1)} / ${d.fRib || '—'} / ${d.armFillet.f} mm`);
     if (d.spokes) add('Rear plate', 'Inside fillets: tip-pad joint / boss roots / spoke roots (in plane)', `${RULES.filletSkirt} / ${RULES.filletBoss} / ${RULES.filletSpoke} mm`);
     else add('Rear plate', 'Inside fillets: skirt joint / boss roots / window corners', `${RULES.filletSkirt} / ${RULES.filletBoss} / ${RULES.filletWindow} mm`);
     add('Mirror plate', 'Core diameter', mmIn(2 * d.R_core));
@@ -1179,6 +1210,19 @@ const MirrorCellCore = (() => {
       mp = mp.fuse(polyPrism(radialRect(d.Rm + d.latGap, d.R_mpo, d.wTip, d.wTip, pr.th), d.z_mb, d.z_post - d.z_mb));
       mp = mp.fuse(cyl(d.padR, d.H_col, pr.pull, d.z_mb));
       if (d.hRib > 0) mp = mp.fuse(polyPrism(radialRect(d.r_root, d.Rm + d.latGap, d.wRib, d.wRib, pr.th), d.z_mf - 0.01, d.hRib + 0.01));
+    }
+    // in-plane fillets where each arm meets the core: the corner triangle (pushed
+    // 0.5 mm into the arm and core so the fuse overlaps) minus the fillet circle
+    {
+      const a = d.armFillet, Rc = d.R_core;
+      for (const sgn of [1, -1]) {
+        const y = ([x, v]) => [x, sgn * v];
+        const piece = R.draw(y([a.corner[0] - 0.5 * a.u[0], a.corner[1] - 0.5 * a.u[1]])).lineTo(y(a.tLine)).lineTo(y(a.tCore))
+          .lineTo(y(a.tCore.map(v => v * (Rc - 0.5) / Rc))).close()
+          .cut(R.drawCircle(a.f).translate(a.c[0], sgn * a.c[1]))
+          .sketchOnPlane('XY', d.z_mb).extrude(d.t_m);
+        for (const pr of d.pairs) mp = mp.fuse(piece.clone().rotate(pr.th, [0, 0, 0], [0, 0, 1]));
+      }
     }
     // fillets where the supports meet the plate top (z_mf).  Each is an explicit
     // cove solid: a square-section strip with a quarter-cylinder removed.
@@ -1604,6 +1648,12 @@ const MirrorCellCore = (() => {
       };
       const arm = rr(d.r_root, d.R_mpo, d.wRoot, d.wTip);
       v2 += path('M' + arm.map(q => P(...q)).join('L') + 'Z', { fill: S.fill2, w: 0.45 });
+      for (const sgn of [1, -1]) {
+        const c = Math.cos(pr.th * D2R), s = Math.sin(pr.th * D2R);
+        const pts = d.armFillet.outline.map(([x, y]) => T2([x * c - sgn * y * s, x * s + sgn * y * c]));
+        v2 += path('M' + pts.map(q => P(...q)).join('L') + 'Z', { fill: S.fill2, color: 'none' });
+        v2 += path('M' + pts.slice(1, 14).map(q => P(...q)).join('L'), { w: 0.45 });
+      }
       if (d.hRib > 0) { const rib = rr(d.r_root, d.Rm + d.latGap, d.wRib, d.wRib); v2 += path('M' + rib.map(q => P(...q)).join('L') + 'Z', { fill: S.fill2, w: 0.3 }); }
       const post = rr(d.Rm + d.latGap, d.R_mpo, d.wTip, d.wTip);
       v2 += path('M' + post.map(q => P(...q)).join('L') + 'Z', { fill: S.fill2, w: 0.6 });
@@ -1627,7 +1677,7 @@ const MirrorCellCore = (() => {
     v2 += dimLin(T2(pol(d.R_mpo, pp.th - 90).map((v, i) => v * (d.wTip / 2) / d.R_mpo + tipPt[i])), T2(pol(d.R_mpo, pp.th + 90).map((v, i) => v * (d.wTip / 2) / d.R_mpo + tipPt[i])), 5, `${d.wTip}`);
     v2 += leader(T2(pol(d.postC, d.pairs[2].th)), [T2(pol(d.postC, d.pairs[2].th))[0] + 14, T2(pol(d.postC, d.pairs[2].th))[1] + 14],
       d.clips ? `post ${d.postD}×${d.wTip}, H Ø${d.clipF.insHole}×${d.clipHoleDepth} (×3)` : `lateral stop ${d.postD}×${d.wTip} (×3)`);
-    v2 += text(T2(pol(d.R_mpo, d.pairs[1].th))[0] - 2, T2(pol(d.R_mpo, d.pairs[1].th))[1] + 14, `arm ${f1(d.wRoot)} → ${d.wTip} wide${d.hRib ? `, rib ${d.wRib}×${d.hRib} tall` : ''}`, { anchor: 'end' });
+    v2 += text(T2(pol(d.R_mpo, d.pairs[1].th))[0] - 2, T2(pol(d.R_mpo, d.pairs[1].th))[1] + 14, `arm ${f1(d.wRoot)} → ${d.wTip} wide, R${d.armFillet.f} roots${d.hRib ? `, rib ${d.wRib}×${d.hRib} tall` : ''}`, { anchor: 'end' });
     v2 += text(c2[0], c2[1] + d.R_mpo + 18, `mirror-to-post gap ${d.latGap} mm radial; posts at R${f1(d.Rm + d.latGap)}–R${f1(d.R_mpo)}`, { color: S.line });
     if (d.vents.length) v2 += leader(T2(d.vents[2 % d.vents.length].c), [c2[0] + d.R_core + 6, T2(d.vents[2 % d.vents.length].c)[1] + 4], `J Ø${f1(2 * d.vents[0].r)} (×${d.vents.length}) @ R${f1(d.vents[0].rv)}`);
     out.push({ w: W2, h: H2, body: v2 });
@@ -2040,7 +2090,7 @@ function renderDecisions() {
     <li><b>Strength:</b> plate thicknesses, lateral-post depth, arm ribs and (RTV) pad size are sized by hand calculations for three load cases: tube horizontal, tube vertical with the locked push-pull preload, and tube pointing down. They are checked against sustained allowables for printed PETG/ASA. The results are in the Strength table on the Checks tab. Lock the pairs finger-snug (Advanced › push-pull lock preload, default 100 N per bolt); the BOM gives the torque.</li>
     <li><b>Walls:</b> the generator aims for ${RU.wallDesign} mm around inserts, measured from the insert's outside diameter. Every insert and through-hole is checked for ≥ ${RU.wallMin} mm to the nearest hole, cut-out or edge. Blind holes keep ≥ ${RU.capMin} mm of cap.</li>
     <li><b>Retention:</b> <i>RTV</i> — each pad has a ${RU.rtvCupDepth} mm-deep cup that sets the silicone thickness, and 3 lateral stops sit at the mirror edge. <i>Clips</i> — the mirror rests on flat pads, and 3 posts carry ${RU.clipThick} mm clips that overlap the face by ${RU.clipOverlap} mm, with a small gap so they never pinch the glass.</li>
-    <li><b>Fillets:</b> rear plate — ${RU.filletSkirt} mm where the plate meets the skirt, ${RU.filletBoss} mm at the root of each push boss, and ${RU.filletWindow} mm vent-window corners. Mirror plate — ${RU.filletPad} mm around each pad column, up to ${RU.filletPost} mm along the inner face of each lateral post (kept ≥ 2 mm below the mirror), and ${RU.filletRib} mm along the arm ribs. All are inside corners that face up when printed, so they need no supports. The fan is automatically rotated to the angle that best clears the bolts.</li>
+    <li><b>Fillets:</b> rear plate — ${RU.filletSkirt} mm where the plate meets the skirt, ${RU.filletBoss} mm at the root of each push boss, and ${RU.filletWindow} mm vent-window corners. Mirror plate — ${RU.filletPad} mm around each pad column, up to ${RU.filletPost} mm along the inner face of each lateral post (kept ≥ 2 mm below the mirror), ${RU.filletRib} mm along the arm ribs, and ${RU.filletArm} mm in plane where each arm meets the core. All are inside corners that face up when printed or are vertical, so they need no supports. The fan is automatically rotated to the angle that best clears the bolts.</li>
     <li><b>Tube attachment:</b> the rear plate is a slip fit in the tube, and its skirt (or spoke tips) sits flush with the tube end. Screws go through the tube wall into radial heat-set inserts: 3 for the 3-spoke plate or for tubes under 200 mm ID, 6 otherwise. The tube screws are the same size as the push-pull bolts (#10-24 for 4.25"/6" mirrors, 1/4-20 for 8"/10"), so one insert size serves both.</li>
     <li><b>Fan:</b> optional, mounted on the back of the rear plate and blowing into the tube, through the plate's central opening and a matching hole in the mirror plate. It is held by thread-forming screws for plastics (#4 for 40 mm fans, #6 for larger) driven from the back into printed pilot holes (about 0.8 × screw diameter), so it needs no inserts or nuts. The screws are sized for at least 1.5 diameters of thread in the plate.</li>
     <li><b>Material:</b> ${esc(P.material)}.</li>

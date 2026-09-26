@@ -16,7 +16,7 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Push-pull | Pull-to-push spacing (chord) | 14.5 mm (16.83°) |
 | Push-pull | Nominal plate gap | 16.15 mm (±1.5 mm travel) |
 | Push-pull | Max tilt at full travel (one pair out, two in) | 2.31° |
-| Mirror plate | Inside fillets: pad roots / post inner faces / rib sides | 2 / 3 / — mm |
+| Mirror plate | Inside fillets: pad roots / post inner faces / rib sides / arm roots (in plane) | 2 / 3 / — / 8 mm |
 | Rear plate | Inside fillets: skirt joint / boss roots / window corners | 3 / 1.5 / 4 mm |
 | Mirror plate | Core diameter | 121.5 mm (4.782") |
 | Mirror plate | Span across posts | 169.9 mm (6.689") |
@@ -50,7 +50,7 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Ref | Category | Qty | Description | Size / spec | Length | Used in | Notes |
 |---|---|---|---|---|---|---|---|
 | P1 | Printed part | 1 | Rear tube plate | PETG or ASA; Ø202.6 × 18 mm |  | tube end | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 202.5 × 202.5 mm; solid volume 169.6 cm³ |
-| P2 | Printed part | 1 | Mirror plate | PETG or ASA; 169.9 mm across posts × 28.1 mm tall |  | carries the mirror | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 148.9 × 148.9 mm; solid volume 66.9 cm³ |
+| P2 | Printed part | 1 | Mirror plate | PETG or ASA; 169.9 mm across posts × 28.1 mm tall |  | carries the mirror | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 148.9 × 148.9 mm; solid volume 67.1 cm³ |
 | S1 | Screw | 3 | Socket head cap screw (pull / adjust) | #10-24 | 1-1/4" | rear plate → mirror plate pad inserts | a thumbscrew or knob of the same length also works; lock at ≈ 0.1 N·m |
 | S2 | Screw | 3 | Socket head cap screw (push / lock) | #10-24 | 1-1/2" | rear-plate push bosses | fully threaded; lock at ≈ 0.1 N·m |
 | S3 | Screw | 6 | Button head socket cap screw (tube attachment) | #10-24 | 1/2" | through tube wall into skirt | sized for a 3.18 mm tube wall |
@@ -102,6 +102,7 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Mirror plate | pad column P2 (incl. root fillet) clear of vents | 12.83 | ≥ 1 | PASS |
 | Mirror plate | wear-washer seat P3 on solid plastic (Ø9.5, incl. 0.8 mm slide at full tilt) | 5.67 | ≥ 0.5 | PASS |
 | Mirror plate | pad column P3 (incl. root fillet) clear of vents | 12.83 | ≥ 1 | PASS |
+| Mirror plate | arm-root fillet (R8) ends inboard of the lateral post | 10.79 | ≥ 0 | PASS |
 | Mirror plate | cap above pull insert hole | 2.5 | ≥ 2 | PASS |
 | Push-pull | pull-bolt engagement at max gap (17.7 mm) | 6.4 | ≥ 6.4 | PASS |
 | Push-pull | pull-bolt tip depth at min gap (14.7 mm) | 9.4 | ≤ 10.4 | PASS |
@@ -124,8 +125,8 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Tube horizontal: 22.7 N lateral (mirror 1.16 kg × 2) | arm bending at the post (15.2 × 6.5 mm arm) | 6.6 MPa | 10 MPa | 66% | PASS |
 | Tube horizontal: 22.7 N lateral (mirror 1.16 kg × 2) | RTV shear, 3 pads Ø9.4 mm | 0.11 MPa | 0.2 MPa | 55% | PASS |
 | Tube horizontal: 22.7 N lateral (mirror 1.16 kg × 2) | pull-bolt bending across the gap (steel, #10-24 root Ø3.5) | 34.91 MPa | 250 MPa | 14% | PASS |
-| Tube vertical: preload 100 N + 8.4 N weight share per pair | pull-bolt insert pull-out (mirror plate, #10-24) | 108.35 N | 400 N | 27% | PASS |
-| Tube vertical: preload 100 N + 8.4 N weight share per pair | push-bolt insert pull-out (rear plate, #10-24) | 108.35 N | 400 N | 27% | PASS |
+| Tube vertical: preload 100 N + 8.4 N weight share per pair | pull-bolt insert pull-out (mirror plate, #10-24) | 108.36 N | 400 N | 27% | PASS |
+| Tube vertical: preload 100 N + 8.4 N weight share per pair | push-bolt insert pull-out (rear plate, #10-24) | 108.36 N | 400 N | 27% | PASS |
 | Tube vertical: preload 100 N + 8.4 N weight share per pair | push-bolt load on mirror plate through the Ø9.5 wear washer | 1.86 MPa | 15 MPa | 12% | PASS |
 | Tube vertical: preload 100 N + 8.4 N weight share per pair | pull-bolt washer bearing on rear plate | 1.04 MPa | 15 MPa | 7% | PASS |
 | Tube vertical: preload 100 N + 8.4 N weight share per pair | mirror plate local bending at each pair (t = 6.5 mm) | 9.62 MPa | 10 MPa | 96% | PASS |
