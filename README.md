@@ -2,6 +2,7 @@
 
 A browser app that designs 3D-printable push-pull mirror cells for Newtonian telescopes. It exports **STEP** and **3MF**.
 
+- **Live app:** https://brainwagon.github.io/mirror-cell-designer/ (hosted on GitHub Pages).
 - **App:** [`mirror-cell-designer.html`](mirror-cell-designer.html). It is a single self-contained file. Open it straight from disk (`file://`). There is no build step. The first load needs an internet connection, because the CAD kernel (~23 MB), three.js and fflate come from jsDelivr. After that the browser caches them.
 - **Examples:** [`examples/`](examples). A 6" mirror in an 8" ID tube, and an 8" mirror in a 10" ID tube.
 - **Tools (optional):** [`tools/build-examples.mjs`](tools/build-examples.mjs) regenerates the examples and runs a regression sweep. It extracts its geometry code from the HTML file, so the examples always match the app.
