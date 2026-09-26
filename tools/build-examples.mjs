@@ -4,7 +4,7 @@
 //   cd tools && npm install
 //   node build-examples.mjs                 # writes ../examples/*
 //   node build-examples.mjs --sweep         # checks every preset/retention/fan combo
-//   node build-examples.mjs --mirror 8 --tube 10 --retention clips --fan 80 --out ../my-cell
+//   node build-examples.mjs --mirror 8 --tube 10 --retention clips --fan 80 --rear spokes --out ../my-cell
 //
 // Exit status is non-zero if any design check or interference check fails.
 import fs from 'node:fs';
@@ -71,13 +71,13 @@ const opt = (k, dflt) => { const i = args.indexOf('--' + k); return i >= 0 ? arg
 let failed = 0;
 
 if (args.includes('--sweep')) {
-  for (const mirror of Object.keys(Core.MIRRORS)) for (const retention of ['rtv', 'clips']) for (const fan of [0, 40, 60, 80, 92, 120]) {
-    const p = { ...Core.defaultParams(mirror), retention, fan };
+  for (const rearStyle of ['ring', 'spokes']) for (const mirror of Object.keys(Core.MIRRORS)) for (const retention of ['rtv', 'clips']) for (const fan of [0, 40, 60, 80, 92, 120]) {
+    const p = { ...Core.defaultParams(mirror), retention, fan, rearStyle };
     const d = Core.computeDesign(p);
-    if (d.errors.length) { console.log(`${mirror}" ${retention} fan ${fan}: rejected — ${d.errors[0]}`); continue; }
+    if (d.errors.length) { console.log(`${rearStyle} ${mirror}" ${retention} fan ${fan}: rejected — ${d.errors[0]}`); continue; }
     const r = evaluate(p);
     failed += r.failed;
-    console.log(`${mirror}" ${retention} fan ${fan}: ${r.failed ? r.failed + ' FAILED' : 'pass'}`);
+    console.log(`${rearStyle} ${mirror}" ${retention} fan ${fan}: ${r.failed ? r.failed + ' FAILED' : 'pass'}`);
   }
 } else if (opt('mirror')) {
   const mirror = opt('mirror');
@@ -87,10 +87,12 @@ if (args.includes('--sweep')) {
   if (opt('retention')) p.retention = opt('retention');
   if (opt('fan')) p.fan = +opt('fan');
   if (opt('bed')) p.bed = +opt('bed');
+  if (opt('rear')) p.rearStyle = opt('rear');
   failed += await writeCell(p, path.resolve(opt('out', `cell-${mirror}in`)));
 } else {
   const ex = path.join(here, '..', 'examples');
   failed += await writeCell({ ...Core.defaultParams('6'), tubeID: 8 * Core.IN, retention: 'rtv', fan: 60 }, path.join(ex, '6in-mirror-8in-tube'));
   failed += await writeCell({ ...Core.defaultParams('8'), tubeID: 10 * Core.IN, retention: 'clips', fan: 80 }, path.join(ex, '8in-mirror-10in-tube'));
+  failed += await writeCell({ ...Core.defaultParams('8'), tubeID: 10 * Core.IN, retention: 'clips', fan: 80, rearStyle: 'spokes' }, path.join(ex, '8in-mirror-10in-tube-spokes'));
 }
 process.exit(failed ? 1 : 0);

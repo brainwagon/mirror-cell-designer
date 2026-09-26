@@ -134,6 +134,8 @@
       <legend>Tube</legend>
       <label class="row"><span>Tube inside diameter</span><input type="number" id="tubeID" step="any" min="0"></label>
       <label class="row"><span>Tube wall thickness <small>sets tube-screw length only</small></span><input type="number" id="tubeWall" step="any" min="0"></label>
+      <label class="row"><span>Rear plate <small>3 spokes print smaller</small></span>
+        <div class="seg" id="rearSeg"><button data-rear="ring">Ring</button><button data-rear="spokes">Spokes</button></div></label>
       <label class="row"><span>Units for these inputs</span>
         <div class="seg" id="unitSeg"><button data-unit="in">in</button><button data-unit="mm">mm</button></div></label>
     </fieldset>
@@ -270,6 +272,8 @@ const MirrorCellCore = (() => {
     filletPad: 2.0,    // mirror plate: fillet where each pad column meets the plate
     filletPost: 3.0,   // mirror plate: fillet at the inner (tension) face of each lateral post
     filletRib: 2.0,    // mirror plate: fillet along both sides of each arm rib
+    spokeWidth: 24,    // 3-spoke rear plate: minimum spoke (and tip pad) width
+    filletSpoke: 6,    // 3-spoke rear plate: in-plane fillet where each spoke meets the hub
   };
 
   // Strength model: hand calculations (beam/plate formulas, not FEA).
@@ -337,7 +341,8 @@ const MirrorCellCore = (() => {
       tubeWall: 3.175,
       retention: 'rtv',
       fan: m.fan,
-      bed: 220,
+      bed: 235,
+      rearStyle: 'ring',    // 'ring' (full plate + skirt) or 'spokes' (hub + 3 spokes)
       fitClear: 0.6,
       gapNominal: 10,
       // collimation travel per pair: sized so the worst case (one pair out, two
@@ -372,6 +377,7 @@ const MirrorCellCore = (() => {
   // signed distance from a point to a cut-out region (negative = inside)
   function distToCut(p, cut) {
     if (cut.type === 'circle') return dist(p, cut.c) - cut.r;
+    if (cut.type === 'outside') return cut.r - Math.hypot(p[0], p[1]);   // everything beyond radius r is empty
     const pts = cut.pts;
     let d = Infinity;
     for (let i = 0; i < pts.length; i++) d = Math.min(d, segDist(p, pts[i], pts[(i + 1) % pts.length]));
@@ -527,8 +533,9 @@ const MirrorCellCore = (() => {
     r_open = round(r_open, 1);
 
     // ----- vent windows in the rear plate -------------------------------------
+    const spokes = p.rearStyle === 'spokes';
     const windows = [];
-    {
+    if (!spokes) {
       let r_wi = r_open + RULES.web;
       if (fan) r_wi = Math.max(r_wi, fan.size / 2 * Math.SQRT2 + 3, Math.SQRT2 * fan.spacing / 2 + fanF.insOD / 2 + RULES.web);
       const r_wo = Rri - RULES.web;
@@ -545,8 +552,17 @@ const MirrorCellCore = (() => {
     // bending, and the spokes between vent windows carrying the mirror side's
     // weight out to the skirt (tube vertical)
     const tRuleR = p.tubeID <= 230 ? 6 : 8;
+    // 3-spoke style: a hub that carries the pairs (and fan), plus one spoke per
+    // pair, centred between its pull and push bolts, out to a pad at the tube wall
+    const R_hub = spokes ? Math.ceil(Math.max(
+      Rpad + Math.max(washerR, rPB + RULES.filletBoss) + RULES.web,
+      fan ? Math.SQRT2 * fan.spacing / 2 + fanF.insOD / 2 + RULES.wallDesign : 0,
+      r_open + RULES.web)) : null;
+    const spokeW = RULES.spokeWidth;
+    const spokeAngles = pairs.map(pr => pr.th + delta / 2);
+    if (spokes && R_hub > Rri - 10) errors.push('Tube too small for the 3-spoke rear plate (the hub reaches the tube wall). Use the full ring.');
     const spokeAng = (windows.length ? 120 - (windows[0].a2 - windows[0].a1) : 120) * D2R;
-    const spokeB = (windows.length ? windows[0].r2 : Rri) * spokeAng;
+    const spokeB = spokes ? spokeW : (windows.length ? windows[0].r2 : Rri) * spokeAng;
     const Mspoke = S.handling * Wside0 / 3 * (Rri - Rpad);
     const tSpoke = ceilTo(Math.sqrt(6 * Mspoke / (S.eta * spokeB * S.sigmaXY)), 0.5);
     const t_r = Math.max(tRuleR, tPair, tSpoke);
@@ -560,8 +576,8 @@ const MirrorCellCore = (() => {
     const pullClear = Math.max(pb.clear, Math.ceil((pb.major + t_r * Math.tan(tiltMax) + 0.3) * 10) / 10);
 
     // ----- tube attachment ------------------------------------------------------
-    const nTube = p.tubeID < 200 ? 3 : 6;
-    const tubeAngles = Array.from({ length: nTube }, (_, i) => 30 + i * 360 / nTube);
+    const nTube = spokes ? 3 : (p.tubeID < 200 ? 3 : 6);
+    const tubeAngles = spokes ? spokeAngles : Array.from({ length: nTube }, (_, i) => 30 + i * 360 / nTube);
     const z_tube = h_so / 2;
 
     // ----- mirror plate -------------------------------------------------------
@@ -663,6 +679,7 @@ const MirrorCellCore = (() => {
       t_m, cupD, cupR, holeDepth, capTop, H_col, padH,
       Lpull, pullLenIn, Lpush, pushLenIn, g, z_mb, z_mf, z_pad, z_mirF,
       latGap, postD, wTip, wRoot, r_root, R_mpo, postC, z_post, clipHoleDepth, R_core, r_c, vents,
+      spokes, R_hub, spokeW, spokeAngles,
       mMirror, W, Fpre, tPair, tRuleR, tSpoke, spokeB, tRuleM, tArmNote, postRule, hRib, wRib, wArm, armSigma, padRtv,
       clip, clipLenIn, tubeLenIn, fanLenIn,
       errors, warnings, notes,
@@ -701,7 +718,7 @@ const MirrorCellCore = (() => {
       rpHoles.push({ name: `push insert P${i + 1}`, c: pr.push, r: d.pb.insOD / 2, boss: d.rPB });
     });
     d.fanHoles.forEach((c, i) => rpHoles.push({ name: `fan insert F${i + 1}`, c, r: d.fanF.insOD / 2 }));
-    const rpCuts = [{ type: 'circle', c: [0, 0], r: d.r_open }]
+    const rpCuts = [{ type: 'circle', c: [0, 0], r: d.r_open }, ...(d.spokes ? [{ type: 'outside', r: d.R_hub }] : [])]
       .concat(d.windows.map(w => ({ type: 'poly', pts: sectorPolygon(w.r1, w.r2, w.a1, w.a2) })));
     for (const h of rpHoles) {
       let wall = d.Rro - Math.hypot(...h.c) - h.r;
@@ -719,7 +736,8 @@ const MirrorCellCore = (() => {
       for (const c of rpCuts) b = Math.min(b, distToCut(pr.push, c) - d.rPB - RULES.filletBoss);
       add('Rear plate', `push boss P${i + 1} (incl. root fillet) clear of cut-outs`, b, 0.5);
     });
-    add('Rear plate', 'wall: tube-screw insert to skirt edge', d.z_tube - d.tubeF.insOD / 2, W);
+    add('Rear plate', `wall: tube-screw insert to ${d.spokes ? 'tip pad' : 'skirt'} edge`, d.z_tube - d.tubeF.insOD / 2, W);
+    if (d.spokes) add('Rear plate', 'wall: tube-screw insert to sides of spoke tip pad', (d.spokeW - d.tubeF.insOD) / 2, W);
     add('Rear plate', 'skirt thickness ≥ tube insert length', d.skirtT - d.tubeF.insLen, 0);
     add('Rear plate', 'push insert fits boss height', d.h_pb - d.pb.insLen, 0);
     if (d.fan) add('Rear plate', 'fan insert fits plate thickness', d.t_r - d.fanF.insLen, 0);
@@ -830,7 +848,9 @@ const MirrorCellCore = (() => {
       + 3 * d.postD * d.wTip * (d.z_post - d.z_mf)
       + 3 * Math.PI * d.padR ** 2 * d.padH
       + 3 * d.wRib * d.hRib * (d.Rm + d.latGap - d.r_root);
-    const Vrp = Math.PI * d.Rro ** 2 * d.t_r + 2 * Math.PI * d.Rro * d.skirtT * d.h_so;
+    const Vrp = d.spokes
+      ? Math.PI * d.R_hub ** 2 * d.t_r + 3 * (d.Rro - d.R_hub) * d.spokeW * d.t_r + 3 * d.spokeW * d.skirtT * d.h_so
+      : Math.PI * d.Rro ** 2 * d.t_r + 2 * Math.PI * d.Rro * d.skirtT * d.h_so;
     const rho = STRENGTH.plasticDensity;
     const mMP = Vmp / 1000 * rho / 1000, mRP = Vrp / 1000 * rho / 1000;
     const mHW = 0.1 + (d.fan ? 0.1 : 0);
@@ -867,7 +887,7 @@ const MirrorCellCore = (() => {
     add(B, 'pull-bolt washer bearing on rear plate', Fax / (Math.PI * (d.pb.washerOD ** 2 - d.pullClear ** 2) / 4), S.sigmaBear, 'MPa', 'σ = F / washer annulus');
     add(B, `mirror plate local bending at each pair (t = ${d.t_m} mm)`, 3 * Fax / (S.eta * d.t_m ** 2), S.sigmaXY, 'MPa', 'σ = 3F / (η·t²)');
     add(B, `rear plate local bending at each pair (t = ${d.t_r} mm)`, 3 * Fax / (S.eta * d.t_r ** 2), S.sigmaXY, 'MPa', 'σ = 3F / (η·t²)');
-    add(B, `rear plate spokes carrying the mirror side to the skirt (${round(d.spokeB, 0)} mm wide)`,
+    add(B, d.spokes ? `rear plate spokes carrying the mirror side to the tube (3 × ${d.spokeW} mm wide)` : `rear plate spokes carrying the mirror side to the skirt (${round(d.spokeB, 0)} mm wide)`,
       6 * (n * Wside / 3 * (d.Rri - d.Rpad)) / (S.eta * d.spokeB * d.t_r ** 2), S.sigmaXY, 'MPa', 'σ = 6·F·L / (η·b·t²)');
     add(B, `tube-screw bearing in the skirt (${d.nTube} × #8-32, cell ${round(m.mTotal, 2)} kg)`,
       n * m.mTotal * 9.81 / d.nTube / (d.tubeF.major * d.skirtT), S.sigmaBear, 'MPa', 'σ = F / (d·L)');
@@ -1010,8 +1030,12 @@ const MirrorCellCore = (() => {
   function keyDims(d) {
     const k = [];
     const add = (group, name, v) => k.push({ group, name, v });
-    add('Rear plate', 'Outside diameter (tube ID − fit)', mmIn(2 * d.Rro));
-    add('Rear plate', 'Skirt inside diameter', mmIn(2 * d.Rri));
+    add('Rear plate', 'Style', d.spokes ? '3 spokes (hub + spokes, 3 tube screws)' : 'full ring (plate + skirt)');
+    add('Rear plate', d.spokes ? 'Spoke-tip circle diameter (tube ID − fit)' : 'Outside diameter (tube ID − fit)', mmIn(2 * d.Rro));
+    if (d.spokes) {
+      add('Rear plate', 'Hub diameter', mmIn(2 * d.R_hub));
+      add('Rear plate', 'Spoke / tip-pad width', `${d.spokeW} mm, spokes at ${d.spokeAngles.map(a => round(a, 1) + '°').join(', ')}`);
+    } else add('Rear plate', 'Skirt inside diameter', mmIn(2 * d.Rri));
     add('Rear plate', 'Overall height (skirt + plate)', mmIn(d.H_s));
     add('Rear plate', 'Plate thickness (sized)', `${d.t_r} mm = max(rule ${d.tRuleR}, preload ${d.tPair}, spokes ${d.tSpoke})`);
     add('Rear plate', 'Push boss Ø × height', `${round(2 * d.rPB, 1)} × ${round(d.h_pb, 1)} mm`);
@@ -1021,7 +1045,8 @@ const MirrorCellCore = (() => {
     add('Push-pull', 'Nominal plate gap', `${round(d.g, 2)} mm (±${d.adj} mm travel)`);
     add('Push-pull', 'Max tilt at full travel (one pair out, two in)', `${round(d.tiltMax * R2D, 2)}°`);
     add('Mirror plate', 'Inside fillets: pad roots / post inner faces / rib sides', `${d.fPad} / ${round(d.fPost, 1)} / ${d.fRib || '—'} mm`);
-    add('Rear plate', 'Inside fillets: skirt joint / boss roots / window corners', `${RULES.filletSkirt} / ${RULES.filletBoss} / ${RULES.filletWindow} mm`);
+    if (d.spokes) add('Rear plate', 'Inside fillets: tip-pad joint / boss roots / spoke roots (in plane)', `${RULES.filletSkirt} / ${RULES.filletBoss} / ${RULES.filletSpoke} mm`);
+    else add('Rear plate', 'Inside fillets: skirt joint / boss roots / window corners', `${RULES.filletSkirt} / ${RULES.filletBoss} / ${RULES.filletWindow} mm`);
     add('Mirror plate', 'Core diameter', mmIn(2 * d.R_core));
     add('Mirror plate', 'Span across posts', mmIn(2 * d.R_mpo));
     add('Mirror plate', 'Base thickness (sized)', `${d.t_m} mm — governed by ${d.tArmNote} (rule ${d.tRuleM}, preload ${d.tPair})`);
@@ -1058,9 +1083,34 @@ const MirrorCellCore = (() => {
     // plate web + skirt as one revolved profile (r along X, z along Z), with a
     // fillet in the inside corner where the web meets the skirt
     const fs = RULES.filletSkirt, fsm = [d.Rri - fs + fs * Math.SQRT1_2, d.z_rr - fs + fs * Math.SQRT1_2];
-    let rp = R.draw([0, d.z_rr]).lineTo([d.Rri - fs, d.z_rr]).threePointsArcTo([d.Rri, d.z_rr - fs], fsm)
-      .lineTo([d.Rri, 0]).lineTo([d.Rro, 0]).lineTo([d.Rro, d.H_s]).lineTo([0, d.H_s]).close()
-      .sketchOnPlane('XZ').revolve();
+    let rp;
+    if (!d.spokes) {
+      rp = R.draw([0, d.z_rr]).lineTo([d.Rri - fs, d.z_rr]).threePointsArcTo([d.Rri, d.z_rr - fs], fsm)
+        .lineTo([d.Rri, 0]).lineTo([d.Rro, 0]).lineTo([d.Rro, d.H_s]).lineTo([0, d.H_s]).close()
+        .sketchOnPlane('XZ').revolve();
+    } else {
+      // 3-spoke style: hub + spokes (local frame: +X along the spoke, Y across it)
+      const w = d.spokeW, f = RULES.filletSpoke, Rh = d.R_hub;
+      rp = cyl(Rh, d.t_r, [0, 0], d.z_rr);
+      for (const a of d.spokeAngles) {
+        let spoke = R.makeBox([Rh - 5, -w / 2, d.z_rr], [d.Rro + 1, w / 2, d.z_rf]);             // web
+        spoke = spoke.fuse(R.makeBox([d.Rri, -w / 2, 0], [d.Rro + 1, w / 2, d.z_rr + 0.01]));   // tip pad against the tube
+        // cove where the tip pad's inner face meets the spoke's rear face
+        spoke = spoke.fuse(R.makeBox([d.Rri - fs, -w / 2, d.z_rr - fs], [d.Rri + 0.01, w / 2, d.z_rr + 0.01])
+          .cut(R.makeCylinder(fs, w + 2, [d.Rri - fs, -w / 2 - 1, d.z_rr - fs], [0, 1, 0])));
+        // in-plane fillets where the spoke meets the hub: a circle of radius f
+        // tangent to the spoke edge and to the hub, material between it and the corner
+        const yc = w / 2 + f, xc = Math.sqrt((Rh + f) ** 2 - yc ** 2), xk = Math.sqrt(Rh ** 2 - (w / 2) ** 2);
+        const pcx = xc * Rh / (Rh + f), pcy = yc * Rh / (Rh + f);
+        for (const sgn of [1, -1]) {
+          const piece = R.draw([xk - 0.5, sgn * w / 2]).lineTo([xc, sgn * w / 2]).lineTo([pcx, sgn * pcy]).lineTo([pcx - 0.5, sgn * pcy * 0.98]).close()
+            .cut(R.drawCircle(f).translate(xc, sgn * yc));
+          spoke = spoke.fuse(piece.sketchOnPlane('XY', d.z_rr).extrude(d.t_r));
+        }
+        rp = rp.fuse(spoke.rotate(a, [0, 0, 0], [0, 0, 1]));
+      }
+      rp = rp.intersect(cyl(d.Rro, d.H_s + 1, [0, 0], -0.5));   // trim the spoke ends to the tube-fit circle
+    }
     // push bosses, each with a cove fillet where it meets the rear face
     const fb = RULES.filletBoss, zb = d.z_rr;
     const cove = R.draw([d.rPB, zb]).lineTo([d.rPB + fb, zb])
@@ -1328,7 +1378,7 @@ const MirrorCellCore = (() => {
   const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   // items: [{ name, mesh:{vertices,triangles}, fit, count }]
-  function make3MF(zipSync, items, { bed = 220, title = 'Mirror cell' } = {}) {
+  function make3MF(zipSync, items, { bed = 235, title = 'Mirror cell' } = {}) {
     const enc = new TextEncoder();
     let objects = '', build = '', prusa = '', orca = '';
     let id = 0;
@@ -1441,15 +1491,33 @@ const MirrorCellCore = (() => {
     const W1 = 2 * d.Rro + 90;
     const c1 = [d.Rro + 45, d.Rro + 22];
     const T1 = (pt) => { const q = RP(pt); return [c1[0] + q[0], c1[1] + q[1]]; };
+    const ang = (pt) => Math.atan2(T1(pt)[1] - c1[1], T1(pt)[0] - c1[0]) * R2D;
     let v1 = title(4, 8, 'REAR TUBE PLATE — viewed from the rear (outside the tube)');
     // outline: plate with cut-outs
-    let dd = circPath(T1([0, 0]), d.Rro) + circPath(T1([0, 0]), d.r_open);
+    let dd;
+    if (d.spokes) {
+      // hub arcs between spokes, spoke sides, and tip arcs on the tube-fit circle (fillets not drawn)
+      const pts = [], hh = Math.asin(d.spokeW / 2 / d.R_hub) * R2D, ht = Math.asin(d.spokeW / 2 / d.Rro) * R2D;
+      const ang = [...d.spokeAngles].sort((a, b) => a - b);
+      ang.forEach((a, i) => {
+        pts.push(pol(d.R_hub, a - hh));
+        for (let k = 0; k <= 8; k++) pts.push(pol(d.Rro, a - ht + 2 * ht * k / 8));
+        pts.push(pol(d.R_hub, a + hh));
+        const next = ang[(i + 1) % 3] + (i === 2 ? 360 : 0);
+        for (let k = 1; k < 24; k++) pts.push(pol(d.R_hub, a + hh + (next - hh - a - hh) * k / 24));
+      });
+      dd = 'M' + pts.map(q => P(...T1(q))).join('L') + 'Z' + circPath(T1([0, 0]), d.r_open);
+    } else dd = circPath(T1([0, 0]), d.Rro) + circPath(T1([0, 0]), d.r_open);
     for (const w of d.windows) {
       const pts = sectorPolygon(w.r1, w.r2, w.a1, w.a2, 24).map(T1);
       dd += 'M' + pts.map(q => P(...q)).join('L') + 'Z';
     }
     v1 += path(dd, { fill: S.fill, w: 0.45 });
-    v1 += circle(T1([0, 0]), d.Rri, { dash: '2 1', color: S.line });
+    if (!d.spokes) v1 += circle(T1([0, 0]), d.Rri, { dash: '2 1', color: S.line });
+    else for (const a of d.spokeAngles) {   // inner face of each tip pad
+      const hw = d.spokeW / 2, c = pol(d.Rri, a), u = pol(hw, a + 90);
+      v1 += line(T1([c[0] - u[0], c[1] - u[1]]), T1([c[0] + u[0], c[1] + u[1]]), { dash: '2 1', color: S.line });
+    }
     for (const pr of d.pairs) {
       v1 += circle(T1(pr.push), d.rPB, { w: 0.45 }) + circle(T1(pr.push), d.pb.insHole / 2) + circle(T1(pr.pull), d.pullClear / 2);
       v1 += circle(T1(pr.pull), d.washerR, { dash: '1 1', color: S.hid });
@@ -1460,15 +1528,21 @@ const MirrorCellCore = (() => {
     v1 += circle(T1([0, 0]), d.Rpad, { dash: '6 1.5 1 1.5', color: S.hid });
     v1 += line(T1([-d.Rro - 4, 0]), T1([d.Rro + 4, 0]), { dash: '6 1.5 1 1.5', color: S.hid, w: 0.2 }) + line(T1([0, -d.Rro - 4]), T1([0, d.Rro + 4]), { dash: '6 1.5 1 1.5', color: S.hid, w: 0.2 });
     // dimensions
-    v1 += dimLin(T1([d.Rro, 0]), T1([-d.Rro, 0]), -d.Rro - 10, `Ø${f1(2 * d.Rro)} (tube ID ${f1(d.p.tubeID)} − ${d.p.fitClear})`);
-    v1 += dimDia(T1([0, 0]), d.Rri, 235, `Ø${f1(2 * d.Rri)} skirt ID`, d.Rro - d.Rri + 10);
+    if (!d.spokes) {
+      v1 += dimLin(T1([d.Rro, 0]), T1([-d.Rro, 0]), -d.Rro - 10, `Ø${f1(2 * d.Rro)} (tube ID ${f1(d.p.tubeID)} − ${d.p.fitClear})`);
+      v1 += dimDia(T1([0, 0]), d.Rri, 235, `Ø${f1(2 * d.Rri)} skirt ID`, d.Rro - d.Rri + 10);
+    } else {
+      const a0 = d.spokeAngles[1], tipA = T1(pol(d.Rro, a0));
+      v1 += leader(tipA, [tipA[0] + (tipA[0] < c1[0] ? 14 : -14), tipA[1] + 12], `tips on Ø${f1(2 * d.Rro)} (ID ${f1(d.p.tubeID)} − ${d.p.fitClear}); pads ${d.spokeW} × ${f1(d.skirtT)}`);
+      v1 += dimDia(T1([0, 0]), d.R_hub, 235, `Ø${f1(2 * d.R_hub)} hub, ${d.spokeW} mm spokes, R${RULES.filletSpoke} roots`, d.Rro - d.R_hub + 10);
+      v1 += arcDim(c1, d.R_hub + 20, ang(pol(1, d.spokeAngles[0])), ang(pol(1, d.pairs[0].th)), `spoke ${f1(d.delta / 2)}° from B`);
+    }
     v1 += dimDia(T1([0, 0]), d.Rpad, 197, `Ø${f1(2 * d.Rpad)} pair circle`, d.Rro - d.Rpad + 10);
-    v1 += dimDia(T1([0, 0]), d.r_open, 55, `E Ø${f1(2 * d.r_open)} ${d.fan ? 'fan opening' : 'vent'}`, d.Rro - d.r_open + 10);
+    v1 += dimDia(T1([0, 0]), d.r_open, d.spokes ? 318 : 55, `E Ø${f1(2 * d.r_open)} ${d.fan ? 'fan opening' : 'vent'}`, d.Rro - d.r_open + 10);
     const pr0 = d.pairs[0];
     v1 += leader(T1(pr0.pull), [T1(pr0.pull)[0] + 18, T1(pr0.pull)[1] + 20], `B Ø${d.pullClear} thru (×3)`);
     v1 += leader(T1(pr0.push), [T1(pr0.push)[0] + 30, T1(pr0.push)[1] + 12], `A Ø${d.pb.insHole} insert, boss Ø${f1(2 * d.rPB)} (×3)`);
     // angle between pull and push (drawing frame flips angles: a -> 180 - a... use mapped points)
-    const ang = (pt) => Math.atan2(T1(pt)[1] - c1[1], T1(pt)[0] - c1[0]) * R2D;
     v1 += arcDim(c1, d.Rpad + 14, ang(pr0.pull), ang(pr0.push), `${f1(d.delta)}°`);
     v1 += arcDim(c1, d.Rpad + 8, ang(d.pairs[1].pull), ang(d.pairs[2].pull) + (ang(d.pairs[2].pull) < ang(d.pairs[1].pull) ? 360 : 0), '120°');
     if (d.fan) {
@@ -1533,13 +1607,18 @@ const MirrorCellCore = (() => {
     const c3 = [W3 / 2, H3 - 12];
     const T3 = (y, z) => [c3[0] + y, c3[1] - z];
     const rect = (y0, y1, z0, z1, o) => path(`M${P(...T3(y0, z0))}L${P(...T3(y1, z0))}L${P(...T3(y1, z1))}L${P(...T3(y0, z1))}Z`, o);
-    let v3 = title(4, 8, 'SECTION A–A through push-pull pair 1 (push bolt projected)');
+    let v3 = title(4, 8, `SECTION A–A through push-pull pair 1 (push bolt${d.spokes ? ' and spoke' : ''} projected)`);
     // tube wall
     v3 += rect(d.Rt, d.Rt + d.p.tubeWall, -2, zT - 2, { dash: '3 1.5', color: S.hid, fill: 'none' });
     v3 += rect(-d.Rt - d.p.tubeWall, -d.Rt, -2, zT - 2, { dash: '3 1.5', color: S.hid, fill: 'none' });
     // rear plate (section)
-    for (const sgn of [1, -1]) v3 += rect(sgn * d.Rri, sgn * d.Rro, 0, d.H_s, { fill: S.fill, w: 0.45 });
-    v3 += rect(-d.Rro, d.Rro, d.z_rr, d.z_rf, { fill: S.fill, w: 0.45 });
+    if (!d.spokes) {
+      for (const sgn of [1, -1]) v3 += rect(sgn * d.Rri, sgn * d.Rro, 0, d.H_s, { fill: S.fill, w: 0.45 });
+      v3 += rect(-d.Rro, d.Rro, d.z_rr, d.z_rf, { fill: S.fill, w: 0.45 });
+    } else {   // hub across the middle; spoke 1 and its tip pad on the +Y side (the -Y side is open)
+      v3 += rect(d.Rri, d.Rro, 0, d.H_s, { fill: S.fill, w: 0.45 });
+      v3 += rect(-d.R_hub, d.Rro, d.z_rr, d.z_rf, { fill: S.fill, w: 0.45 });
+    }
     const pushY = d.pairs[0].push[1];
     v3 += rect(pushY - d.rPB, pushY + d.rPB, d.H_s - d.h_pb, d.z_rr, { fill: S.fill, w: 0.45, dash: '2 1' });
     // mirror plate
@@ -1711,6 +1790,7 @@ function fillForm() {
   const p = state.params;
   $$('#presetSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.preset === p.mirror));
   $$('#retSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.ret === p.retention));
+  $$('#rearSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.rear === p.rearStyle));
   $$('#unitSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.unit === state.unit));
   $$('#viewSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === state.view));
   for (const k of LEN_FIELDS) { $('#' + k).value = toUnit(p[k]); $('#' + k).step = state.unit === 'in' ? '0.01' : '0.1'; }
@@ -1732,9 +1812,13 @@ function renderFanOptions() {
 function bindForm() {
   $('#presetSeg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    const keep = { retention: state.params.retention, bed: state.params.bed };
+    const keep = { retention: state.params.retention, bed: state.params.bed, rearStyle: state.params.rearStyle };
     state.params = { ...Core.defaultParams(b.dataset.preset), ...keep };
     fillForm(); changed();
+  });
+  $('#rearSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.params.rearStyle = b.dataset.rear; fillForm(); changed();
   });
   $('#retSeg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -1754,7 +1838,7 @@ function bindForm() {
   });
   $('#fan').addEventListener('change', e => { state.params.fan = +e.target.value; changed(); });
   $('#resetBtn').addEventListener('click', () => {
-    state.params = { ...Core.defaultParams(state.params.mirror), retention: state.params.retention };
+    state.params = { ...Core.defaultParams(state.params.mirror), retention: state.params.retention, rearStyle: state.params.rearStyle };
     fillForm(); changed();
   });
   $$('.tabs button').forEach(b => b.addEventListener('click', () => {
@@ -1918,7 +2002,8 @@ function renderDecisions() {
   <ul>
     <li><b>CAD kernel: replicad</b> (OpenCascade compiled to WebAssembly), loaded from jsDelivr. It is a real B-rep kernel, so it can write true <b>STEP</b>. JSCAD is mesh-only CSG and cannot export STEP. 3MF files are written from the kernel's triangulation, with a small built-in 3MF writer and <code>fflate</code> for the zip.</li>
     <li><b>3MF print defaults:</b> ${P.walls} walls (perimeters), ${P.infill}% ${P.pattern} infill, ${P.top} top and ${P.bottom} bottom layers, ${P.layer} mm layers, supports off. Five walls at 0.4 mm make the ≥ 2 mm material around every heat-set insert solid perimeter, not infill. These are written as per-object settings that PrusaSlicer reads (<code>Metadata/Slic3r_PE_model.config</code>). Equivalent OrcaSlicer/Bambu keys are included on a best-effort basis (<code>Metadata/model_settings.config</code>). The same values appear in the file description, so you can enter them by hand in any slicer.</li>
-    <li><b>Oversize parts:</b> any part whose footprint, at its best rotation, exceeds the bed (default 220 × 220 mm) is flagged in a warning that gives the bed size needed. The part is <b>exported whole and full size, never split or scaled</b>. You can print it on a larger bed or cut it in your slicer. A 10" ID tube needs a 254 mm bed for the rear plate. A 10" mirror's mirror plate needs about 240 mm.</li>
+    <li><b>Oversize parts:</b> any part whose footprint, at its best rotation, exceeds the bed (default 235 × 235 mm, e.g. a Kobra S1; set 220 for the brief's standard bed) is flagged in a warning that gives the bed size needed. The part is <b>exported whole and full size, never split or scaled</b>. To shrink it, choose the 3-spoke rear plate (below), print on a larger bed, or cut it in your slicer.</li>
+    <li><b>Rear plate style (option):</b> <i>Ring</i> (default) is a full plate with a skirt around the tube wall, 3 or 6 tube screws and vent windows. <i>3 spokes</i> is a hub carrying the push-pull pairs and fan, with one ${RU.spokeWidth} mm spoke per pair, centred between its pull and push bolts. Each spoke ends in a pad against the tube wall with one radial #8-32 screw (3 in total). Its footprint is about 13% smaller (an 8" mirror in a 10" tube goes from 253 to about 223 mm) and it uses roughly 40% less plastic. The three pads centre the plate in the tube and tolerate an out-of-round tube better than a ring. The spokes are sized by the strength checks.</li>
     <li><b>Print orientation, no supports:</b> the rear plate prints front-face-down, so the skirt and push bosses grow upward. The radial tube-screw holes are teardrops pointing up. The mirror plate prints rear-face-down, with pads and posts growing upward. The blind insert holes open onto the bed, and their small (&lt; 8 mm) roofs bridge. Clips print flat.</li>
     <li><b>Push-pull:</b> 3 pairs at 120°, on a circle of 0.65 × mirror diameter (close to the optimum for 3-point support). Each pull bolt passes through a clearance hole in the rear plate and threads into a heat-set insert inside the pad column that the mirror rests on. The push bolt threads through a heat-set insert in a boss on the rear plate, bears on the mirror plate's back, and is locked with a jam nut. Bolts are #10-24 for 4.25" and 6" mirrors and 1/4-20 for 8" and 10" mirrors. Default travel at each pair is sized so the worst case (one pair fully out, two fully in) tilts the mirror about 2.5°: ±1 mm for 4.25", ±1.5 mm for 6", ±2 mm for 8" and ±2.5 mm for 10". That is several times what collimation needs, and it is adjustable under Advanced. The plate gap is set so a standard-length pull bolt fully engages its insert at maximum gap and never bottoms at minimum gap. All 8 extreme poses (each pair at +travel or −travel) are checked for clearance to the tube wall and the rear plate, both analytically and with a CAD intersection. The pull-bolt clearance holes are enlarged automatically if the travel you choose would make the bolts bind as they tilt.</li>
     <li><b>Strength:</b> plate thicknesses, lateral-post depth, arm ribs and (RTV) pad size are sized by hand calculations for three load cases: tube horizontal, tube vertical with the locked push-pull preload, and tube pointing down. They are checked against sustained allowables for printed PETG/ASA. The results are in the Strength table on the Checks tab. Lock the pairs finger-snug (Advanced › push-pull lock preload, default 100 N per bolt); the BOM gives the torque.</li>
@@ -1934,7 +2019,7 @@ function renderDecisions() {
 // ---------------------------------------------------------------- exports
 function slug() {
   const d = state.design;
-  return `mirror-cell-${d.p.mirror.replace('.', '_')}in-mirror-${round(d.p.tubeID / IN, 2)}in-tube-${d.clips ? 'clips' : 'rtv'}${d.fan ? '-fan' + d.fan.size : ''}`;
+  return `mirror-cell-${d.p.mirror.replace('.', '_')}in-mirror-${round(d.p.tubeID / IN, 2)}in-tube-${d.clips ? 'clips' : 'rtv'}${d.fan ? '-fan' + d.fan.size : ''}${d.spokes ? '-spokes' : ''}`;
 }
 function download(data, name, type) {
   const blob = data instanceof Blob ? data : new Blob([data], { type });

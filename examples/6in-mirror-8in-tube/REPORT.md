@@ -1,10 +1,11 @@
 # Mirror cell: 6" mirror in 203.2 mm (8") ID tube
 
-Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed: 220 mm
+Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed: 235 mm
 
 ## Key dimensions (mm)
 | Group | Dimension | Value |
 |---|---|---|
+| Rear plate | Style | full ring (plate + skirt) |
 | Rear plate | Outside diameter (tube ID − fit) | 202.6 mm (7.976") |
 | Rear plate | Skirt inside diameter | 188.6 mm (7.425") |
 | Rear plate | Overall height (skirt + plate) | 17 mm (0.669") |
@@ -154,7 +155,7 @@ Retention: **RTV** · Fan: **60 mm** · Push-pull: **3 × #10-24 pairs** · Bed:
 | Mirror side tilted (worst of 8 poses, 2.3° max) | Tube | 0 | PASS |
 | Mirror side tilted (worst of 8 poses, 2.3° max) | Rear tube plate | 0 | PASS |
 
-## Print bed fit (220 × 220 mm)
+## Print bed fit (235 × 235 mm)
 | Part | Footprint (mm) | Height (mm) | Fits |
 |---|---|---|---|
 | Rear tube plate | 202.5 × 202.5 | 17 | yes |

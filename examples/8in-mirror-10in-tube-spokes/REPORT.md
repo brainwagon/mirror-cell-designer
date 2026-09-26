@@ -5,11 +5,12 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 ## Key dimensions (mm)
 | Group | Dimension | Value |
 |---|---|---|
-| Rear plate | Style | full ring (plate + skirt) |
-| Rear plate | Outside diameter (tube ID − fit) | 253.4 mm (9.976") |
-| Rear plate | Skirt inside diameter | 239.4 mm (9.425") |
+| Rear plate | Style | 3 spokes (hub + spokes, 3 tube screws) |
+| Rear plate | Spoke-tip circle diameter (tube ID − fit) | 253.4 mm (9.976") |
+| Rear plate | Hub diameter | 158 mm (6.22") |
+| Rear plate | Spoke / tip-pad width | 24 mm, spokes at 97.6°, 217.6°, 337.6° |
 | Rear plate | Overall height (skirt + plate) | 18.5 mm (0.728") |
-| Rear plate | Plate thickness (sized) | 8 mm = max(rule 8, preload 7, spokes 4) |
+| Rear plate | Plate thickness (sized) | 8 mm = max(rule 8, preload 7, spokes 7) |
 | Rear plate | Push boss Ø × height | 14.4 × 12 mm |
 | Push-pull | Bolt size | 1/4-20 |
 | Push-pull | Pair circle diameter | 132.1 mm (5.2") |
@@ -17,7 +18,7 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 | Push-pull | Nominal plate gap | 12.05 mm (±2 mm travel) |
 | Push-pull | Max tilt at full travel (one pair out, two in) | 2.31° |
 | Mirror plate | Inside fillets: pad roots / post inner faces / rib sides | 2 / 3 / 2 mm |
-| Rear plate | Inside fillets: skirt joint / boss roots / window corners | 3 / 1.5 / 4 mm |
+| Rear plate | Inside fillets: tip-pad joint / boss roots / spoke roots (in plane) | 3 / 1.5 / 6 mm |
 | Mirror plate | Core diameter | 156.5 mm (6.161") |
 | Mirror plate | Span across posts | 226.7 mm (8.925") |
 | Mirror plate | Base thickness (sized) | 7 mm — governed by push-pull preload (rule 6, preload 7) |
@@ -36,10 +37,9 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 |---|---|---|---|---|---|---|
 | Rear plate | A | 3 | 1/4-20 heat-set insert (push bolt) | Ø7.6 thru boss (12 tall) | R66.04 @ 105.2°, 225.2°, 345.2° | from rear face |
 | Rear plate | B | 3 | 1/4-20 clearance (pull bolt) | Ø7 thru | R66.04 @ 90°, 210°, 330° |  |
-| Rear plate | C | 6 | #8-32 heat-set insert (tube screw), radial teardrop | Ø4.7 thru skirt (7) | 30°, 90°, 150°, 210°, 270°, 330°; 5.25 from tube end | from outside of skirt |
+| Rear plate | C | 3 | #8-32 heat-set insert (tube screw), radial teardrop | Ø4.7 thru skirt (7) | 97.6°, 217.6°, 337.6°; 5.25 from tube end | from outside of skirt |
 | Rear plate | D | 4 | #6-32 heat-set insert (fan) | Ø4 thru | 71.5 × 71.5 square, rotated 22° | from rear face |
 | Rear plate | E | 1 | Fan opening | Ø76 thru | centre |  |
-| Rear plate | F | 3 | Vent window (annular sector) | R59.6–R115.7, 83.3° wide | 116.3°–199.6°, 236.3°–319.6°, 356.3°–79.6° |  |
 | Mirror plate | G | 3 | 1/4-20 heat-set insert (pull bolt), blind | Ø7.6 × 13.5 deep | R66.04 @ 90°, 210°, 330° | from rear face (bed side) |
 | Mirror plate | H | 3 | #6-32 heat-set insert (clip), blind | Ø4 × 7.3 deep | R107.85 @ 90°, 210°, 330° | from top of post |
 | Mirror plate | I | 1 | Central vent | Ø76 thru | centre |  |
@@ -49,18 +49,18 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 ## Bill of materials (per cell)
 | Ref | Category | Qty | Description | Size / spec | Length | Used in | Notes |
 |---|---|---|---|---|---|---|---|
-| P1 | Printed part | 1 | Rear tube plate | PETG or ASA; Ø253.4 × 18.5 mm |  | tube end | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 253.4 × 253.4 mm (exceeds 235 mm bed); solid volume 252.6 cm³ |
+| P1 | Printed part | 1 | Rear tube plate | PETG or ASA; Ø253.4 × 18.5 mm |  | tube end | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 223 × 222.2 mm; solid volume 152.3 cm³ |
 | P2 | Printed part | 1 | Mirror plate | PETG or ASA; 226.7 mm across posts × 48.8 mm tall |  | carries the mirror | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 197.4 × 197.4 mm; solid volume 127.4 cm³ |
 | P3 | Printed part | 3 | Mirror clip | PETG or ASA; 14.8 × 16 × 3 mm |  | clip posts | 5 walls, 40% gyroid, 0.2 mm layers, no supports; footprint 14.8 × 16 mm; solid volume 0.7 cm³ |
 | S1 | Screw | 3 | Socket head cap screw (pull / adjust) | 1/4-20 | 1-1/4" | rear plate → mirror plate pad inserts | a thumbscrew or knob of the same length also works; lock at ≈ 0.13 N·m |
 | S2 | Screw | 3 | Socket head cap screw (push / lock) | 1/4-20 | 1-1/4" | rear-plate push bosses | fully threaded; lock at ≈ 0.13 N·m |
-| S3 | Screw | 6 | Button head socket cap screw (tube attachment) | #8-32 | 3/8" | through tube wall into skirt | sized for a 3.18 mm tube wall |
+| S3 | Screw | 3 | Button head socket cap screw (tube attachment) | #8-32 | 3/8" | through tube wall into skirt | sized for a 3.18 mm tube wall |
 | S4 | Screw | 3 | Socket head cap screw (clips) | #6-32 | 3/8" | clips → clip posts |  |
 | S5 | Screw | 4 | Socket head cap screw (fan mount) | #6-32 | 1-1/4" | fan → rear plate |  |
 | N1 | Nut / washer | 3 | Hex jam nut | 1/4-20 |  | push bolts | 7/16" across flats |
 | N2 | Nut / washer | 3 | Flat washer, SAE | 1/4-20 |  | under pull-bolt heads | Ø15.9 mm OD |
 | I1 | Heat-set insert | 6 | Brass heat-set insert (tapered, for plastics) | 1/4-20, 8 mm long, for Ø7.6 mm hole |  | rear plate, push bosses; mirror plate, pad columns | install from rear face |
-| I2 | Heat-set insert | 6 | Brass heat-set insert (tapered, for plastics) | #8-32, 5.6 mm long, for Ø4.7 mm hole |  | rear-plate skirt (radial) | install from outside of skirt |
+| I2 | Heat-set insert | 3 | Brass heat-set insert (tapered, for plastics) | #8-32, 5.6 mm long, for Ø4.7 mm hole |  | rear-plate skirt (radial) | install from outside of skirt |
 | I3 | Heat-set insert | 7 | Brass heat-set insert (tapered, for plastics) | #6-32, 4.8 mm long, for Ø4 mm hole |  | clip posts; rear plate, fan mount | install from top of post; install from rear face |
 | F1 | Fan | 1 | 80 mm 12 V DC fan | 8025 (80 × 80 × 25 mm), 71.5 mm hole spacing |  | rear face of rear plate | blows into the tube; 12 V supply and lead not included |
 | C1 | Consumable | 1 | Filament | PETG or ASA |  | all printed parts | PLA not recommended (creeps under bolt load) |
@@ -68,33 +68,34 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 | T2 | Tool | 1 | Hex key | 3/32" |  | #8-32 button heads |  |
 | T3 | Tool | 1 | Hex key | 7/64" |  | #6-32 clip screws, #6-32 fan screws |  |
 | T4 | Tool | 1 | Wrench | 7/16" |  | push-bolt jam nuts |  |
-| T5 | Tool | 1 | Drill bit | 3/16" (4.8 mm) |  | 6 tube-wall holes for #8-32 | positions are in the hole schedule (C) |
+| T5 | Tool | 1 | Drill bit | 3/16" (4.8 mm) |  | 3 tube-wall holes for #8-32 | positions are in the hole schedule (C) |
 | T6 | Tool | 1 | Soldering iron with heat-set insert tips | 1/4-20, #8-32, #6-32 |  | installing inserts | or a dedicated insert press |
 
 ## Checks
 | Part | Check | Value (mm) | Required | Result |
 |---|---|---|---|---|
-| Rear plate | wall around pull clearance hole P1 | 8.43 | ≥ 2 | PASS |
+| Rear plate | wall around pull clearance hole P1 | 9.46 | ≥ 2 | PASS |
 | Rear plate | wall around push insert P1 | 3 | ≥ 2 | PASS |
-| Rear plate | wall around pull clearance hole P2 | 8.43 | ≥ 2 | PASS |
+| Rear plate | wall around pull clearance hole P2 | 9.46 | ≥ 2 | PASS |
 | Rear plate | wall around push insert P2 | 3 | ≥ 2 | PASS |
-| Rear plate | wall around pull clearance hole P3 | 8.43 | ≥ 2 | PASS |
+| Rear plate | wall around pull clearance hole P3 | 9.46 | ≥ 2 | PASS |
 | Rear plate | wall around push insert P3 | 3 | ≥ 2 | PASS |
-| Rear plate | wall around fan insert F1 | 6.72 | ≥ 2 | PASS |
-| Rear plate | wall around fan insert F2 | 6.72 | ≥ 2 | PASS |
-| Rear plate | wall around fan insert F3 | 6.72 | ≥ 2 | PASS |
+| Rear plate | wall around fan insert F1 | 10.26 | ≥ 2 | PASS |
+| Rear plate | wall around fan insert F2 | 10.26 | ≥ 2 | PASS |
+| Rear plate | wall around fan insert F3 | 10.26 | ≥ 2 | PASS |
 | Rear plate | wall around fan insert F4 | 10.26 | ≥ 2 | PASS |
-| Rear plate | solid bearing under pull washer P1 | 3.98 | ≥ 0.5 | PASS |
-| Rear plate | push boss P1 (incl. root fillet) clear of cut-outs | 3.98 | ≥ 0.5 | PASS |
-| Rear plate | solid bearing under pull washer P2 | 3.98 | ≥ 0.5 | PASS |
-| Rear plate | push boss P2 (incl. root fillet) clear of cut-outs | 3.98 | ≥ 0.5 | PASS |
-| Rear plate | solid bearing under pull washer P3 | 3.98 | ≥ 0.5 | PASS |
-| Rear plate | push boss P3 (incl. root fillet) clear of cut-outs | 3.98 | ≥ 0.5 | PASS |
-| Rear plate | wall: tube-screw insert to skirt edge | 2.6 | ≥ 2 | PASS |
+| Rear plate | solid bearing under pull washer P1 | 5.01 | ≥ 0.5 | PASS |
+| Rear plate | push boss P1 (incl. root fillet) clear of cut-outs | 4.26 | ≥ 0.5 | PASS |
+| Rear plate | solid bearing under pull washer P2 | 5.01 | ≥ 0.5 | PASS |
+| Rear plate | push boss P2 (incl. root fillet) clear of cut-outs | 4.26 | ≥ 0.5 | PASS |
+| Rear plate | solid bearing under pull washer P3 | 5.01 | ≥ 0.5 | PASS |
+| Rear plate | push boss P3 (incl. root fillet) clear of cut-outs | 4.26 | ≥ 0.5 | PASS |
+| Rear plate | wall: tube-screw insert to tip pad edge | 2.6 | ≥ 2 | PASS |
+| Rear plate | wall: tube-screw insert to sides of spoke tip pad | 9.35 | ≥ 2 | PASS |
 | Rear plate | skirt thickness ≥ tube insert length | 1.4 | ≥ 0 | PASS |
 | Rear plate | push insert fits boss height | 4 | ≥ 0 | PASS |
 | Rear plate | fan insert fits plate thickness | 3.2 | ≥ 0 | PASS |
-| Rear plate | wall between tube-screw inserts | 121.4 | ≥ 2 | PASS |
+| Rear plate | wall between tube-screw inserts | 214.15 | ≥ 2 | PASS |
 | Mirror plate | wall around pull insert P1 | 3 | ≥ 2 | PASS |
 | Mirror plate | wall around pull insert P2 | 3 | ≥ 2 | PASS |
 | Mirror plate | wall around pull insert P3 | 3 | ≥ 2 | PASS |
@@ -139,8 +140,8 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 | Tube vertical: preload 100 N + 18.5 N weight share per pair | pull-bolt washer bearing on rear plate | 0.74 MPa | 15 MPa | 5% | PASS |
 | Tube vertical: preload 100 N + 18.5 N weight share per pair | mirror plate local bending at each pair (t = 7 mm) | 9.07 MPa | 10 MPa | 91% | PASS |
 | Tube vertical: preload 100 N + 18.5 N weight share per pair | rear plate local bending at each pair (t = 8 mm) | 6.94 MPa | 10 MPa | 69% | PASS |
-| Tube vertical: preload 100 N + 18.5 N weight share per pair | rear plate spokes carrying the mirror side to the skirt (74 mm wide) | 1.56 MPa | 10 MPa | 16% | PASS |
-| Tube vertical: preload 100 N + 18.5 N weight share per pair | tube-screw bearing in the skirt (6 × #8-32, cell 3.61 kg) | 0.4 MPa | 15 MPa | 3% | PASS |
+| Tube vertical: preload 100 N + 18.5 N weight share per pair | rear plate spokes carrying the mirror side to the tube (3 × 24 mm wide) | 4.83 MPa | 10 MPa | 48% | PASS |
+| Tube vertical: preload 100 N + 18.5 N weight share per pair | tube-screw bearing in the skirt (3 × #8-32, cell 3.26 kg) | 0.73 MPa | 15 MPa | 5% | PASS |
 | Tube pointing down: 17 N on each clip | clip bending over the post edge (16 × 3 mm) | 1.99 MPa | 10 MPa | 20% | PASS |
 | Tube pointing down: 17 N on each clip | clip-screw insert pull-out (#6-32, incl. prying) | 23.91 N | 250 N | 10% | PASS |
 
@@ -174,7 +175,7 @@ Retention: **clips** · Fan: **80 mm** · Push-pull: **3 × 1/4-20 pairs** · Be
 ## Print bed fit (235 × 235 mm)
 | Part | Footprint (mm) | Height (mm) | Fits |
 |---|---|---|---|
-| Rear tube plate | 253.4 × 253.4 | 18.5 | **NO – see oversize policy** |
+| Rear tube plate | 223 × 222.2 | 18.5 | yes |
 | Mirror plate | 197.4 × 197.4 | 48.8 | yes |
 | Mirror clip | 14.8 × 16 | 3 | yes |
 
